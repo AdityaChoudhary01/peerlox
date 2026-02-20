@@ -1,31 +1,31 @@
+// proxy.js
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
 export default withAuth(
-  function middleware(req) {
+  // 1. Rename function to 'proxy'
+  function proxy(req) {
     const { pathname } = req.nextUrl;
     const token = req.nextauth.token;
 
-    // 1. Admin Protection Logic
+    // Admin Protection Logic
     if (pathname.startsWith("/admin") && token?.role !== "admin") {
+      // Use rewrite to hide the fact that the page exists (Security by Obscurity)
       return NextResponse.rewrite(new URL("/not-found", req.url));
     }
     
-    // 2. Ensure we aren't accidentally trapping public blog routes
-    // (Though not in matcher, this is a safety check)
-    if (pathname.startsWith("/blogs/") && !["post", "my-blogs", "edit"].some(path => pathname.includes(path))) {
+    // Safety check for public routes
+    if (pathname.startsWith("/blogs/") && !["post", "my-blogs", "edit"].some(p => pathname.includes(p))) {
        return NextResponse.next();
     }
   },
   {
     callbacks: {
-      // Only require a token for the routes matched in the config below
       authorized: ({ token }) => !!token,
     },
   }
 );
 
-// Define which routes REQUIRE authentication
 export const config = {
   matcher: [
     "/upload",
@@ -35,8 +35,8 @@ export const config = {
     "/settings/:path*",
     "/admin/:path*",
     "/collections/:path*",
-    "/blogs/post",       // Creation
-    "/blogs/my-blogs",   // Management
-    "/blogs/edit/:path*", // Editing
+    "/blogs/post",
+    "/blogs/my-blogs",
+    "/blogs/edit/:path*",
   ],
 };
