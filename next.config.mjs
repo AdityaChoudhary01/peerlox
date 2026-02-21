@@ -1,12 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    // 🚀 CRITICAL: Bypasses Vercel's 1,000 optimized images/mo limit.
-    // Since you optimize images on the client side before upload, 
-    // Vercel doesn't need to process them again.
+    // 🚀 BYPASS VERCEL LIMITS: Uses Cloudflare's Edge for image delivery instead of Vercel's processing
     unoptimized: true,
     formats: ['image/avif', 'image/webp'],
     remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'cdn.peerlox.in', // Your professional Custom Domain
+        pathname: '/**',
+      },
       {
         protocol: 'https',
         hostname: 'pub-367e1428b2244b639eb139da2272b5d0.r2.dev',
@@ -22,33 +25,35 @@ const nextConfig = {
   },
   experimental: {
     serverActions: {
+      // Allows for larger PDF/Image uploads via Server Actions
       bodySizeLimit: '15mb',
     },
   },
   webpack: (config) => {
-    // Resolve Alias for PDF.js dependencies
+    // PDF.js Support: Fixes issues with 'canvas' and 'encoding' in server environments
     config.resolve.alias.canvas = false;
     config.resolve.alias.encoding = false;
 
-    // Fix for module parsing to prevent Node.js polyfills on client side
+    // Prevent Node.js polyfills from leaking into the client bundle
     config.module.rules.push({
       test: /\.mjs$/,
       include: /node_modules/,
       type: "javascript/esm",
     });
 
-    // Support for PDF.js Top-Level Await
+    // Required for PDF.js and modern ESM modules
     config.experiments = {
       ...config.experiments,
       topLevelAwait: true,
       layers: true,
     };
 
-    // Suppress critical dependency warnings common with PDF.js
+    // Suppress warnings for PDF.js's use of 'require' in certain environments
     config.module.exprContextCritical = false;
+    
     return config;
   },
-  // Ensure builds succeed even with minor lint/type issues during rapid deployment
+  // Rapid Deployment: Allows the build to complete even if minor ESLint/TS issues remain
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -68,4 +73,5 @@ const nextConfig = {
     ];
   },
 };
+
 export default nextConfig;
