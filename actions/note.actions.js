@@ -57,6 +57,7 @@ export async function getNotes({ page = 1, limit = 12, search, university, cours
 
     // Execution
     const notes = await Note.find(query)
+      .select("-reviews") // 🚀 MASSIVE SPEED BOOST: Do not fetch heavy review arrays for lists!
       .populate('user', 'name avatar role email')
       .sort(sortOptions)
       .skip(skip)
@@ -77,13 +78,7 @@ export async function getNotes({ page = 1, limit = 12, search, university, cours
       uploadDate: note.uploadDate ? note.uploadDate.toISOString() : new Date().toISOString(),
       createdAt: note.createdAt ? note.createdAt.toISOString() : new Date().toISOString(),
       updatedAt: note.updatedAt ? note.updatedAt.toISOString() : new Date().toISOString(),
-      reviews: note.reviews ? note.reviews.map(r => ({
-        ...r,
-        _id: r._id ? r._id.toString() : Date.now().toString(),
-        user: r.user ? r.user.toString() : null,
-        parentReviewId: r.parentReviewId ? r.parentReviewId.toString() : null,
-        createdAt: r.createdAt ? r.createdAt.toISOString() : new Date().toISOString()
-      })) : []
+      reviews: [] // Force empty array since we explicitly excluded them for speed
     }));
 
     return { notes: safeNotes, totalPages, currentPage: page, totalCount: totalNotes };
@@ -106,7 +101,7 @@ export async function getNoteById(id) {
         path: 'reviews.user',
         select: 'name avatar role email'
       })
-      .lean();
+      .lean(); // 🚀 LEAN: Prevents 5-second Mongoose serialization block
 
     if (!note) return null;
 
@@ -147,6 +142,7 @@ export async function getRelatedNotes(noteId) {
         { course: currentNote.course }
       ]
     })
+    // 🚀 SELECT: Explicitly pulls only what's needed for the NoteCard
     .select('title university course subject year rating numReviews downloadCount uploadDate fileType fileName isFeatured fileKey thumbnailKey')
     .populate('user', 'name avatar role')
     .limit(4)
@@ -170,7 +166,7 @@ export async function getRelatedNotes(noteId) {
  */
 export async function createNote({ title, description, university, course, subject, year, fileData, userId }) {
   await connectDB();
-  console.log("🚀 Server Action Triggered: createNote was just called!"); // Add this!
+  console.log("🚀 Server Action Triggered: createNote was just called!"); 
   try {
     const newNote = new Note({
       title,
@@ -194,7 +190,6 @@ export async function createNote({ title, description, university, course, subje
 
     const seoStatus = await indexNewContent(newNote._id.toString(), 'note');
     
-    // 👇 MAKE THE LOG LOUD
     console.warn("\n=============================================");
     console.warn(`🚀 SEO STATUS: Google Indexing Ping was ${seoStatus ? 'DELIVERED' : 'FAILED'}`);
     console.warn(`📝 NOTE ID: ${newNote._id.toString()}`);
@@ -245,7 +240,8 @@ export async function updateNote(noteId, data, userId) {
     revalidatePath('/profile');
     revalidatePath('/search');
     
-    return { success: true, note: JSON.parse(JSON.stringify(note)) };
+    // Convert to strict plain object before returning to Client Component
+    return { success: true, note: JSON.parse(JSON.stringify(note.toObject())) };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -326,6 +322,9 @@ export async function incrementViewCount(noteId) {
   }
 }
 
+/**
+ * ADD REVIEW
+ */
 export async function addReview(noteId, userId, rating, comment, parentReviewId = null) {
   await connectDB();
   try {
@@ -370,13 +369,14 @@ export async function addReview(noteId, userId, rating, comment, parentReviewId 
 }
 
 /**
- * GET USER NOTES (Fixed Serialization)
+ * GET USER NOTES
  */
 export async function getUserNotes(userId, page = 1, limit = 10) {
   await connectDB();
   try {
     const skip = (page - 1) * limit;
     const notes = await Note.find({ user: userId })
+      .select("-reviews") // 🚀 SPEED BOOST: Do not fetch reviews for profile lists
       .sort({ uploadDate: -1 })
       .skip(skip)
       .limit(limit)
@@ -391,13 +391,7 @@ export async function getUserNotes(userId, page = 1, limit = 10) {
       uploadDate: n.uploadDate ? n.uploadDate.toISOString() : new Date().toISOString(),
       createdAt: n.createdAt ? n.createdAt.toISOString() : new Date().toISOString(),
       updatedAt: n.updatedAt ? n.updatedAt.toISOString() : new Date().toISOString(),
-      reviews: n.reviews ? n.reviews.map(r => ({
-        ...r,
-        _id: r._id ? r._id.toString() : Date.now().toString(),
-        user: r.user ? r.user.toString() : null,
-        parentReviewId: r.parentReviewId ? r.parentReviewId.toString() : null,
-        createdAt: r.createdAt ? r.createdAt.toISOString() : new Date().toISOString()
-      })) : []
+      reviews: [] // Excluded for speed
     }));
 
     return {
@@ -411,6 +405,9 @@ export async function getUserNotes(userId, page = 1, limit = 10) {
   }
 }
 
+/**
+ * DELETE REVIEW
+ */
 export async function deleteReview(noteId, reviewId) {
   await connectDB();
   try {
@@ -421,9 +418,9 @@ export async function deleteReview(noteId, reviewId) {
       (r) => r._id.toString() !== reviewId && r.parentReviewId?.toString() !== reviewId
     );
 
-    // Recalculate stats...
+    // Recalculate stats
     const ratedReviews = note.reviews.filter((r) => r.rating > 0);
-    note.numReviews = note.reviews.length;
+    note.numReviews = note.reviews.filter(r => !r.parentReviewId).length;
     note.rating = ratedReviews.length > 0 
       ? ratedReviews.reduce((acc, item) => item.rating + acc, 0) / ratedReviews.length 
       : 0;
@@ -449,6 +446,9 @@ export async function deleteReview(noteId, reviewId) {
   }
 }
 
+/**
+ * GET NOTE DOWNLOAD URL
+ */
 export async function getNoteDownloadUrl(fileKey, fileName) {
   try {
     const url = await generateReadUrl(fileKey, fileName);

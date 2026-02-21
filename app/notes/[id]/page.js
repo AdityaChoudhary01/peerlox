@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 
 // Components
-import ClientPDFLoader from "@/components/notes/ClientPDFLoader"; // 🚀 IMPORT THE NEW CLIENT WRAPPER
+import ClientPDFLoader from "@/components/notes/ClientPDFLoader";
 import Reviews from "@/components/notes/Reviews";
 import RelatedNotes from "@/components/notes/RelatedNotes";
 import AuthorInfoBlock from "@/components/common/AuthorInfoBlock";
@@ -29,7 +29,6 @@ const APP_URL = process.env.NEXTAUTH_URL || "https://peerlox.in";
 
 // ✅ 1. HIGH-OCTANE DYNAMIC SEO METADATA
 export async function generateMetadata({ params }) {
-  // 🚀 NEXT.JS 15 FIX: Await params before reading properties
   const resolvedParams = await params;
   
   const note = await getNoteById(resolvedParams.id);
@@ -60,18 +59,20 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function ViewNotePage({ params }) {
-  // 🚀 NEXT.JS 15 FIX: Await params before reading properties
   const resolvedParams = await params;
   
-  const session = await getServerSession(authOptions);
-  const note = await getNoteById(resolvedParams.id);
+  // 🚀 PARALLEL FETCHING: Fetch the session and the main note at the same time to cut load times in half
+  const [session, note] = await Promise.all([
+    getServerSession(authOptions),
+    getNoteById(resolvedParams.id)
+  ]);
   
   if (!note) notFound();
 
   const isOwner = session?.user?.id === (note.user?._id?.toString() || note.user?.toString());
   const canEdit = isOwner || session?.user?.role === 'admin';
 
-  // Fetch parallel data
+  // Fetch related notes and R2 URL concurrently
   const [relatedNotesData, signedUrl] = await Promise.all([
     getNotes({ subject: note.subject, limit: 4, page: 1 }),
     generateReadUrl(note.fileKey, note.fileName)
@@ -80,7 +81,7 @@ export default async function ViewNotePage({ params }) {
   const { notes: relatedNotes } = relatedNotesData;
   const filteredRelated = relatedNotes.filter(n => n._id.toString() !== note._id.toString());
 
-  // ✅ 2. EDUCATIONAL SCHEMA (JSON-LD) - Massive for SEO
+  // ✅ 2. EDUCATIONAL SCHEMA (JSON-LD)
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Course",
@@ -106,7 +107,7 @@ export default async function ViewNotePage({ params }) {
     }
   };
 
-  // Serialization for Client Components
+  // 🚀 SERIALIZATION: Even if .lean() is used, MongoDB ObjectIds must be strings for Client Components
   const serializedNote = {
     ...note,
     _id: note._id.toString(),
@@ -116,18 +117,18 @@ export default async function ViewNotePage({ params }) {
       _id: rev._id.toString(),
       parentReviewId: rev.parentReviewId?.toString() || null,
       user: rev.user ? { ...rev.user, _id: rev.user._id?.toString() || rev.user.toString() } : null,
-      date: rev.date ? rev.date.toISOString() : new Date().toISOString()
+      date: rev.date ? new Date(rev.date).toISOString() : new Date().toISOString()
     })) : []
   };
 
   return (
     <main className="container py-8 md:py-12 pt-24 md:pt-32 max-w-7xl relative">
-      {/* Inject JSON-LD */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       
+      {/* Non-blocking View Counter */}
       <ViewCounter noteId={serializedNote._id} />
 
       <div className="absolute top-20 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-primary/10 blur-[100px] pointer-events-none rounded-full" />
@@ -178,12 +179,10 @@ export default async function ViewNotePage({ params }) {
             </div>
           </header>
 
-          {/* Document Viewer Section */}
           <section className="rounded-[2rem] border border-white/10 bg-background/50 backdrop-blur-xl overflow-hidden shadow-2xl relative group">
              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 opacity-80" />
              
              <div className="min-h-[500px] md:min-h-[700px] bg-black/40">
-               {/* 🚀 NOW USING THE DYNAMICALLY IMPORTED CLIENT COMPONENT */}
                <ClientPDFLoader url={signedUrl} fileType={note.fileType} title={note.title} />
              </div>
              

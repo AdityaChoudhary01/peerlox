@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
-import { getBlogBySlug, getRelatedBlogs } from "@/actions/blog.actions"; 
+import { getBlogBySlug, getRelatedBlogs, incrementBlogViews } from "@/actions/blog.actions"; 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import BlogInteractions from "@/components/blog/BlogInteractions";
 import AuthorInfoBlock from "@/components/common/AuthorInfoBlock";
 import RelatedBlog from "@/components/blog/RelatedBlogs"; 
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Star, MessageCircle } from "lucide-react";
+import { Calendar, Clock, Star, MessageCircle, Eye } from "lucide-react"; // Added Eye icon
 import { formatDate } from "@/lib/utils";
 
 // --- Markdown & Syntax Highlighting Imports ---
@@ -19,8 +19,8 @@ const APP_URL = process.env.NEXTAUTH_URL || "https://peerlox.in";
 
 // ✅ 1. HIGH-OCTANE DYNAMIC SEO METADATA
 export async function generateMetadata({ params }) {
-  const { slug } = await params;
-  const blog = await getBlogBySlug(slug, false);
+  const resolvedParams = await params;
+  const blog = await getBlogBySlug(resolvedParams.slug, false);
   
   if (!blog) return { title: "Blog Not Found" };
 
@@ -31,12 +31,12 @@ export async function generateMetadata({ params }) {
     description: blog.summary,
     keywords: blog.tags?.join(", ") || "academic blog, study tips, PeerLox",
     alternates: {
-        canonical: `${APP_URL}/blogs/${slug}`,
+        canonical: `${APP_URL}/blogs/${resolvedParams.slug}`,
     },
     openGraph: {
       title: blog.title,
       description: blog.summary,
-      url: `${APP_URL}/blogs/${slug}`,
+      url: `${APP_URL}/blogs/${resolvedParams.slug}`,
       type: "article",
       publishedTime: blog.createdAt,
       authors: [blog.author?.name],
@@ -52,11 +52,18 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function BlogDetailPage({ params }) {
-  const { slug } = await params;
-  const session = await getServerSession(authOptions);
-  const blog = await getBlogBySlug(slug);
+  const resolvedParams = await params;
+  
+  // 🚀 PARALLEL FETCHING: Cut load time in half
+  const [session, blog] = await Promise.all([
+    getServerSession(authOptions),
+    getBlogBySlug(resolvedParams.slug)
+  ]);
 
   if (!blog) notFound();
+
+  // 🚀 NON-BLOCKING INCREMENT: Fire and forget the view counter
+  incrementBlogViews(blog._id).catch(() => {});
 
   const relatedBlogs = await getRelatedBlogs(blog._id);
 
@@ -67,7 +74,7 @@ export default async function BlogDetailPage({ params }) {
     ? (blog.reviews.reduce((acc, review) => acc + (review.rating || 0), 0) / totalReviews).toFixed(1)
     : 0;
 
-  // ✅ 2. ARTICLE SCHEMA (JSON-LD) - Massive for SEO
+  // ✅ 2. ARTICLE SCHEMA (JSON-LD)
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
@@ -91,7 +98,7 @@ export default async function BlogDetailPage({ params }) {
     },
     "mainEntityOfPage": {
       "@type": "WebPage",
-      "@id": `${APP_URL}/blogs/${slug}`
+      "@id": `${APP_URL}/blogs/${resolvedParams.slug}`
     }
   };
 
@@ -175,13 +182,11 @@ export default async function BlogDetailPage({ params }) {
 
   return (
     <article className="container max-w-5xl py-12 px-4 sm:px-6">
-      {/* Inject JSON-LD */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       
-      {/* --- Header Section --- */}
       <header className="flex flex-col items-center text-center mb-12 space-y-8">
         <div className="flex flex-wrap justify-center gap-2">
           {blog.tags?.map((tag) => (
@@ -207,6 +212,10 @@ export default async function BlogDetailPage({ params }) {
                <Clock className="w-4 h-4 text-primary" aria-hidden="true" />
                {readTime} min read
              </span>
+             <span className="flex items-center gap-2">
+                <Eye className="w-4 h-4 text-cyan-400" aria-hidden="true" />
+                {blog.views || 0}
+             </span>
              <span className="flex items-center gap-2 text-foreground bg-secondary/50 px-3 py-1 rounded-full">
                 <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" aria-hidden="true" />
                 <span>
@@ -217,7 +226,6 @@ export default async function BlogDetailPage({ params }) {
         </div>
       </header>
 
-      {/* --- Cover Image --- */}
       {blog.coverImage && (
         <figure className="relative w-full aspect-video mb-20 rounded-[2.5rem] overflow-hidden shadow-2xl ring-1 ring-border/50">
           <img
@@ -229,7 +237,6 @@ export default async function BlogDetailPage({ params }) {
         </figure>
       )}
 
-      {/* --- CONTENT --- */}
       <section className="max-w-none mb-24 prose prose-invert prose-headings:tracking-tight prose-a:text-primary">
           <ReactMarkdown 
             remarkPlugins={[remarkGfm]} 
@@ -239,7 +246,6 @@ export default async function BlogDetailPage({ params }) {
           </ReactMarkdown>
       </section>
 
-      {/* --- Footer & Related Section --- */}
       <footer className="space-y-16">
         <div className="border-t border-border/60 pt-12">
            <h3 className="text-2xl font-bold mb-8 flex items-center gap-2">

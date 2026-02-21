@@ -1,9 +1,9 @@
+export const dynamic = 'force-dynamic';
 import connectDB from "@/lib/db";
 import Blog from "@/lib/models/Blog";
 import Note from "@/lib/models/Note";
 import User from "@/lib/models/User";
 
-// Ensure we use the production domain
 const BASE_URL = 'https://peerlox.in';
 
 const formatDate = (date) => {
@@ -18,13 +18,25 @@ export async function GET() {
   try {
     await connectDB();
 
+    // 🚀 THE FIX: Added logging and error handling specifically for blogs
+    const blogsPromise = Blog.find({}).select("slug updatedAt").lean();
+    const notesPromise = Note.find({}).select("_id updatedAt").lean();
+    const usersPromise = User.find({}).select("_id updatedAt").lean();
+
     const [blogs, notes, users] = await Promise.all([
-      Blog.find({}).select("slug updatedAt").lean(),
-      Note.find({}).select("_id updatedAt").lean(),
-      User.find({}).select("_id updatedAt").lean(),
+      blogsPromise,
+      notesPromise,
+      usersPromise,
     ]);
 
-    // 1. Static Routes
+    // DEBUG: See what is actually being returned
+    console.log(`[SITEMAP] Found ${blogs.length} blogs, ${notes.length} notes, ${users.length} users.`);
+    if (blogs.length === 0) {
+      console.warn("[SITEMAP] WARNING: No blogs found in the database. Are they published?");
+    } else {
+        console.log("[SITEMAP] Sample blog slug:", blogs[0]?.slug);
+    }
+
     const staticRoutes = [
       "", "/about", "/contact", "/blogs", "/search",
       "/login","/signup", 
@@ -36,15 +48,16 @@ export async function GET() {
       changefreq: "monthly",
     }));
 
-    // 2. Dynamic Blogs
-    const blogPages = blogs.map(blog => ({
-      url: `${BASE_URL}/blogs/${blog.slug}`,
-      lastModified: formatDate(blog.updatedAt),
-      priority: "0.8",
-      changefreq: "weekly",
-    }));
+    // Filter out any blogs that somehow don't have a slug to prevent malformed URLs
+    const blogPages = blogs
+      .filter(blog => blog.slug) // 🚀 Prevent undefined slugs
+      .map(blog => ({
+        url: `${BASE_URL}/blogs/${blog.slug}`,
+        lastModified: formatDate(blog.updatedAt),
+        priority: "0.8",
+        changefreq: "weekly",
+      }));
 
-    // 3. Dynamic Notes (Your core asset)
     const notePages = notes.map(note => ({
       url: `${BASE_URL}/notes/${note._id.toString()}`,
       lastModified: formatDate(note.updatedAt),
@@ -52,7 +65,6 @@ export async function GET() {
       changefreq: "daily",
     }));
 
-    // 4. Public User Profiles
     const profilePages = users.map(user => ({
       url: `${BASE_URL}/profile/${user._id.toString()}`,
       lastModified: formatDate(user.updatedAt),
@@ -74,11 +86,12 @@ ${allPages
   .join("")}
 </urlset>`;
 
+    // 🚀 THE CACHE FIX: To test changes immediately, temporarily remove the Cache-Control header
+    // so Cloudflare doesn't serve you a stale version. Put it back once it's working.
     return new Response(sitemap, {
       headers: {
         "Content-Type": "application/xml",
-        // 🚀 CLOUDFLARE CACHE: Tell Cloudflare to cache this XML at the edge for 24 hours
-        "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=43200",
+        // "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=43200", 
       },
     });
   } catch (error) {

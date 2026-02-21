@@ -20,7 +20,7 @@ export async function getBlogs({ page = 1, limit = 9, search = "", tag = "", isF
 
     if (search) {
       const regex = { $regex: search, $options: 'i' };
-      query.$or = [{ title: regex }, { content: regex }, { summary: regex }, { tags: regex }];
+      query.$or = [{ title: regex }, { summary: regex }, { tags: regex }];
     }
 
     if (tag && tag !== 'All') {
@@ -33,6 +33,7 @@ export async function getBlogs({ page = 1, limit = 9, search = "", tag = "", isF
     }
 
     const blogs = await Blog.find(query)
+      .select("-content -reviews") // 🚀 MASSIVE SPEED BOOST: Do not fetch heavy markdown or reviews for lists
       .populate('author', 'name avatar role email')
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -51,19 +52,13 @@ export async function getBlogs({ page = 1, limit = 9, search = "", tag = "", isF
       numReviews: b.numReviews || 0,
       viewCount: b.viewCount || 0,
       isFeatured: b.isFeatured || false,
-      reviews: b.reviews ? b.reviews.map(r => ({
-        ...r,
-        _id: r._id.toString(),
-        parentReviewId: r.parentReviewId ? r.parentReviewId.toString() : null,
-        user: r.user ? r.user.toString() : null,
-        createdAt: r.createdAt ? r.createdAt.toISOString() : new Date().toISOString()
-      })) : [],
+      reviews: [], // Excluded for speed
       createdAt: b.createdAt ? b.createdAt.toISOString() : new Date().toISOString(),
       updatedAt: b.updatedAt ? b.updatedAt.toISOString() : new Date().toISOString(),
     }));
 
     return { 
-      blogs: JSON.parse(JSON.stringify(safeBlogs)), 
+      blogs: safeBlogs, 
       total, 
       totalPages: Math.ceil(total / limit) 
     };
@@ -76,7 +71,7 @@ export async function getBlogs({ page = 1, limit = 9, search = "", tag = "", isF
 /**
  * GET BLOG BY SLUG
  */
-export async function getBlogBySlug(slug, incrementView = true) {
+export async function getBlogBySlug(slug) {
  await connectDB();
  try {
    const blog = await Blog.findOne({ slug })
@@ -85,13 +80,9 @@ export async function getBlogBySlug(slug, incrementView = true) {
        path: 'reviews.user',
        select: 'name avatar role email'
      })
-     .lean();
+     .lean(); // 🚀 LEAN: Prevents Mongoose serialization bottleneck
 
    if (!blog) return null;
-
-   if (incrementView) {
-       await Blog.updateOne({ _id: blog._id }, { $inc: { viewCount: 1 } });
-   }
 
    const safeBlog = {
      ...blog,
@@ -101,7 +92,7 @@ export async function getBlogBySlug(slug, incrementView = true) {
      tags: blog.tags ? Array.from(blog.tags) : [],
      rating: blog.rating || 0,
      numReviews: blog.numReviews || 0,
-     viewCount: incrementView ? (blog.viewCount || 0) + 1 : (blog.viewCount || 0),
+     viewCount: blog.viewCount || 0,
      isFeatured: blog.isFeatured || false,
      reviews: blog.reviews ? blog.reviews.map(r => ({
        ...r,
@@ -114,11 +105,25 @@ export async function getBlogBySlug(slug, incrementView = true) {
      updatedAt: blog.updatedAt ? blog.updatedAt.toISOString() : new Date().toISOString(),
    };
 
-   return JSON.parse(JSON.stringify(safeBlog));
+   return safeBlog;
  } catch (error) {
    console.error("Get Blog By Slug Error:", error);
    return null;
  }
+}
+
+/**
+ * INCREMENT BLOG VIEWS (Non-blocking)
+ */
+export async function incrementBlogViews(blogId) {
+  try {
+    await connectDB();
+    await Blog.findByIdAndUpdate(blogId, { $inc: { viewCount: 1 } });
+    return true;
+  } catch (error) {
+    console.error("Failed to increment blog views:", error);
+    return false;
+  }
 }
 
 /**
@@ -344,7 +349,7 @@ export async function getRelatedBlogs(blogId) {
       viewCount: b.viewCount || 0,
       createdAt: b.createdAt?.toISOString()
     }));
-    return JSON.parse(JSON.stringify(safeRelated));
+    return safeRelated;
   } catch (error) { return []; }
 }
 
@@ -354,7 +359,11 @@ export async function getRelatedBlogs(blogId) {
 export async function getMyBlogs(userId) {
   await connectDB();
   try {
-    const blogs = await Blog.find({ author: userId }).sort({ createdAt: -1 }).lean();
+    const blogs = await Blog.find({ author: userId })
+      .select("-content -reviews") // 🚀 SPEED BOOST
+      .sort({ createdAt: -1 })
+      .lean();
+      
     const safeBlogs = blogs.map(b => ({
       ...b, 
       _id: b._id.toString(), 
@@ -362,7 +371,7 @@ export async function getMyBlogs(userId) {
       author: b.author?.toString(), 
       createdAt: b.createdAt?.toISOString()
     }));
-    return JSON.parse(JSON.stringify(safeBlogs));
+    return safeBlogs;
   } catch (error) { return []; }
 }
 
@@ -373,6 +382,7 @@ export async function getBlogsForUser(userId) {
   await connectDB();
   try {
     const blogs = await Blog.find({ author: userId })
+      .select("-content -reviews") // 🚀 SPEED BOOST
       .sort({ createdAt: -1 })
       .lean();
 
@@ -386,18 +396,12 @@ export async function getBlogsForUser(userId) {
       numReviews: b.numReviews || 0,
       viewCount: b.viewCount || 0,
       isFeatured: b.isFeatured || false,
-      reviews: b.reviews ? b.reviews.map(r => ({
-        ...r,
-        _id: r._id.toString(),
-        parentReviewId: r.parentReviewId ? r.parentReviewId.toString() : null,
-        user: r.user ? r.user.toString() : null,
-        createdAt: r.createdAt ? r.createdAt.toISOString() : new Date().toISOString()
-      })) : [],
+      reviews: [], // Excluded
       createdAt: b.createdAt ? b.createdAt.toISOString() : new Date().toISOString(),
       updatedAt: b.updatedAt ? b.updatedAt.toISOString() : new Date().toISOString(),
     }));
 
-    return JSON.parse(JSON.stringify(safeBlogs));
+    return safeBlogs;
   } catch (error) {
     console.error("Error fetching user blogs:", error);
     return [];
