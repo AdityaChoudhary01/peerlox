@@ -2,7 +2,6 @@
 
 import connectDB from "@/lib/db";
 import User from "@/lib/models/User";
-import bcrypt from "bcryptjs";
 
 export async function registerUser(formData) {
   await connectDB();
@@ -20,17 +19,16 @@ export async function registerUser(formData) {
       return { success: false, error: "Email is already registered" };
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create new user
+    // 🚀 THE FIX: Pass the plain-text password directly. 
+    // Mongoose's pre('save') hook will hash it exactly once.
     const newUser = new User({
       name,
       email,
-      password: hashedPassword,
+      password, // <--- Plain text goes here
     });
 
-    await newUser.save();
+    await newUser.save(); // <--- Mongoose hashes it here
+    
     return { success: true };
   } catch (error) {
     console.error("Registration Error:", error);
