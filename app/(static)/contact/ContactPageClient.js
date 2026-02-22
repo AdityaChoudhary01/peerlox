@@ -81,7 +81,8 @@ export default function ContactPageClient() {
                                     </div>
                                     <div>
                                         <h3 className="text-white font-bold mb-1">Electronic Mail</h3>
-                                        <a href="mailto:aadiwrld01@gmail.com" title="Email Aditya Choudhary" className="text-white/40 hover:text-cyan-400 transition-colors">aadiwrld01@gmail.com</a>
+                                        {/* ✅ ACCESSIBILITY FIX: Changed text-white/40 to text-white/60 */}
+                                        <a href="mailto:aadiwrld01@gmail.com" title="Email Aditya Choudhary" className="text-white/60 hover:text-cyan-400 transition-colors">aadiwrld01@gmail.com</a>
                                     </div>
                                 </div>
 
@@ -91,7 +92,8 @@ export default function ContactPageClient() {
                                     </div>
                                     <div>
                                         <h3 className="text-white font-bold mb-1">Physical Access</h3>
-                                        <p className="text-white/40 leading-relaxed text-sm">StuHive HQ, Ghaziabad,<br/>Uttar Pradesh, India - 201009</p>
+                                        {/* ✅ ACCESSIBILITY FIX: Changed text-white/40 to text-white/60 */}
+                                        <p className="text-white/60 leading-relaxed text-sm">StuHive HQ, Ghaziabad,<br/>Uttar Pradesh, India - 201009</p>
                                     </div>
                                 </div>
 
@@ -101,7 +103,8 @@ export default function ContactPageClient() {
                                     </div>
                                     <div>
                                         <h3 className="text-white font-bold mb-1">Direct Voice Line</h3>
-                                        <p className="text-white/40 text-sm">Mon-Fri, 9am - 6pm IST</p>
+                                        {/* ✅ ACCESSIBILITY FIX: Changed text-white/40 to text-white/60 */}
+                                        <p className="text-white/60 text-sm">Mon-Fri, 9am - 6pm IST</p>
                                         <a href="tel:+911234567890" className="text-pink-400 font-bold hover:underline">+91 (1234) 567-890</a>
                                     </div>
                                 </div>
@@ -135,7 +138,6 @@ export default function ContactPageClient() {
                                     <FaCheckCircle size={40} aria-hidden="true" />
                                 </div>
                                 <h3 className="text-2xl font-bold text-white">Message Uplinked</h3>
-                                {/* 🚀 FIX: Escaped quote in We've */}
                                 <p className="text-white/50 max-w-xs mx-auto">We&apos;ve received your request and our team will analyze it shortly.</p>
                                 <Button variant="outline" onClick={() => setIsSubmitted(false)} className="rounded-full border-white/10 hover:bg-white/5">
                                     New Message
@@ -145,16 +147,19 @@ export default function ContactPageClient() {
                             <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
                                 <div className="grid sm:grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <label htmlFor="name" className="text-[10px] uppercase tracking-[0.2em] font-black text-white/40 ml-1">Identity</label>
+                                        {/* ✅ ACCESSIBILITY FIX: Changed text-white/40 to text-white/60 */}
+                                        <label htmlFor="name" className="text-[10px] uppercase tracking-[0.2em] font-black text-white/60 ml-1">Identity</label>
                                         <Input id="name" name="name" placeholder="Full Name" required className="bg-white/[0.03] border-white/10 h-14 rounded-2xl focus:border-cyan-400 transition-colors" />
                                     </div>
                                     <div className="space-y-2">
-                                        <label htmlFor="email" className="text-[10px] uppercase tracking-[0.2em] font-black text-white/40 ml-1">Email Address</label>
+                                        {/* ✅ ACCESSIBILITY FIX: Changed text-white/40 to text-white/60 */}
+                                        <label htmlFor="email" className="text-[10px] uppercase tracking-[0.2em] font-black text-white/60 ml-1">Email Address</label>
                                         <Input id="email" name="email" type="email" placeholder="email@example.com" required className="bg-white/[0.03] border-white/10 h-14 rounded-2xl focus:border-cyan-400 transition-colors" />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label htmlFor="message" className="text-[10px] uppercase tracking-[0.2em] font-black text-white/40 ml-1">Message Content</label>
+                                    {/* ✅ ACCESSIBILITY FIX: Changed text-white/40 to text-white/60 */}
+                                    <label htmlFor="message" className="text-[10px] uppercase tracking-[0.2em] font-black text-white/60 ml-1">Message Content</label>
                                     <Textarea id="message" name="message" placeholder="Describe your inquiry..." required className="bg-white/[0.03] border-white/10 min-h-[180px] rounded-2xl focus:border-cyan-400 transition-colors" />
                                 </div>
                                 
@@ -188,7 +193,8 @@ export default function ContactPageClient() {
                 </Link>
             </nav>
 
-            <footer className="text-center mt-12 text-white/10 text-[10px] font-black uppercase tracking-[0.5em]">
+            {/* ✅ ACCESSIBILITY FIX: Changed text-white/10 to text-white/50 for sufficient contrast */}
+            <footer className="text-center mt-12 text-white/50 text-[10px] font-black uppercase tracking-[0.5em]">
                 Encrypted Communication • StuHive
             </footer>
         </main>
