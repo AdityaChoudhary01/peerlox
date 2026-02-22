@@ -42,6 +42,7 @@ export default function NoteCard({ note }) {
     ? `${r2PublicUrl}/${note.thumbnailKey}` 
     : (note.fileType?.startsWith("image/") ? `${r2PublicUrl}/${note.fileKey}` : null);
 
+  // FIXED GSC ERROR: Removed the `aggregateRating` object which is not supported for CreativeWork
   const noteSchema = {
     "@context": "https://schema.org",
     "@type": "CreativeWork",
@@ -69,12 +70,7 @@ export default function NoteCard({ note }) {
         "interactionType": "https://schema.org/DownloadAction",
         "userInteractionCount": note.downloadCount || 0
       }
-    ],
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": note.rating || 5,
-      "reviewCount": note.numReviews || 1
-    }
+    ]
   };
 
   const handleSave = async (e) => {

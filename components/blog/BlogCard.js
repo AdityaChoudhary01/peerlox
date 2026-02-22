@@ -11,6 +11,7 @@ export default function BlogCard({ blog }) {
   const views = blog.viewCount || 0;
   const isAdmin = blog.author?.role === 'admin';
 
+  // FIXED GSC ERROR: Removed aggregateRating which is not supported for BlogPosting
   const blogSchema = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
@@ -30,12 +31,7 @@ export default function BlogCard({ blog }) {
         "url": "https://stuhive.in/logo512.png"
       }
     },
-    "description": blog.summary || blog.excerpt || "",
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": rating || 5,
-      "reviewCount": blog.numReviews || 1
-    }
+    "description": blog.summary || blog.excerpt || ""
   };
 
   return (
@@ -48,7 +44,7 @@ export default function BlogCard({ blog }) {
       <Link href={`/blogs/${blog.slug}`} title={`Read: ${blog.title}`} className="block h-full group">
         <Card className="h-full overflow-hidden transition-all duration-300 hover:shadow-[0_0_20px_rgba(102,126,234,0.15)] hover:border-primary/40 flex flex-col bg-[#0a0a0a] border border-white/10 hover:-translate-y-1">
           
-          {/* Cover Image - FIXED: Added explicit width/height for Lighthouse CLS test */}
+          {/* Cover Image */}
           <div className="relative h-44 w-full overflow-hidden bg-secondary/20 shrink-0">
             {blog.coverImage ? (
               <img 
@@ -78,7 +74,7 @@ export default function BlogCard({ blog }) {
 
           <CardContent className="flex flex-col flex-grow p-4 sm:p-5">
             
-            {/* 🚀 Clean Metadata Row - FIXED CONTRAST: Changed text-muted-foreground to text-gray-300 */}
+            {/* Metadata Row */}
             <div className="flex items-center gap-x-3 text-[10px] font-bold uppercase tracking-wider text-gray-300 mb-2">
               <span className="flex items-center gap-1" aria-label={`Published on ${formatDate(blog.createdAt)}`}>
                 <Calendar className="w-3 h-3 text-cyan-400" aria-hidden="true" /> {formatDate(blog.createdAt)}
@@ -95,7 +91,7 @@ export default function BlogCard({ blog }) {
               {blog.title}
             </h3>
             
-            {/* Star Ratings - FIXED ARIA LABEL */}
+            {/* Star Ratings */}
             <div className="flex items-center gap-2 mb-3" aria-label={`Rated ${rating.toFixed(1)} out of 5 stars by ${blog.numReviews || 0} reviewers`}>
               <div className="flex gap-0.5" aria-hidden="true">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -105,13 +101,12 @@ export default function BlogCard({ blog }) {
                   />
                 ))}
               </div>
-              {/* FIXED CONTRAST: text-white/40 -> text-gray-400 */}
               <span className="text-[9px] font-bold text-gray-400">
                 {rating.toFixed(1)} ({blog.numReviews || 0})
               </span>
             </div>
             
-            {/* FIXED CONTRAST: text-white/50 -> text-gray-300 */}
+            {/* Description */}
             <p className="text-gray-300 text-xs leading-relaxed line-clamp-2 mb-4 flex-grow font-medium">
               {blog.summary || blog.excerpt || "Click to read the full article on StuHive..."}
             </p>
@@ -122,7 +117,6 @@ export default function BlogCard({ blog }) {
                   <AvatarImage src={blog.author?.avatar} alt={`${blog.author?.name} avatar`} />
                   <AvatarFallback className="bg-secondary text-[10px] font-black">{blog.author?.name?.charAt(0)}</AvatarFallback>
                 </Avatar>
-                {/* FIXED CONTRAST: text-white/70 -> text-gray-200 */}
                 <span className="text-[11px] font-bold text-gray-200 flex items-center gap-1">
                     {blog.author?.name} 
                     {isAdmin && <ShieldCheck className="w-3 h-3 text-emerald-400" aria-label="Verified Admin" />}

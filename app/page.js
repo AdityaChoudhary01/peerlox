@@ -183,7 +183,7 @@ export default async function HomePage() {
                       ${index === 0 ? "text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]" : 
                         index === 1 ? "text-slate-300 drop-shadow-[0_0_8px_rgba(203,213,225,0.8)]" : 
                         index === 2 ? "text-amber-600 drop-shadow-[0_0_8px_rgba(217,119,6,0.8)]" : 
-                        "text-white/40 group-hover:text-white/80 transition-colors"}`} // FIXED: Contrast
+                        "text-gray-400 group-hover:text-gray-200 transition-colors"}`} /* FIXED CONTRAST */
                     >
                       #{index + 1}
                     </span>
@@ -195,7 +195,8 @@ export default async function HomePage() {
 
                     <div className="min-w-0">
                       <p className="font-bold text-xs sm:text-base text-white truncate group-hover:text-cyan-400 transition-colors">{user.name}</p>
-                      <p className="text-[8px] sm:text-[11px] text-muted-foreground uppercase tracking-[0.1em] sm:tracking-[0.15em] font-bold">{user.role || 'Top Scholar'}</p>
+                      {/* FIXED CONTRAST */}
+                      <p className="text-[8px] sm:text-[11px] text-gray-400 uppercase tracking-[0.1em] sm:tracking-[0.15em] font-bold">{user.role || 'Top Scholar'}</p>
                     </div>
                   </div>
                   

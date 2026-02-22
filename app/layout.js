@@ -63,10 +63,10 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className="dark">
       <head>
-        {/* ✅ 2. NETWORK PRECONNECTS FOR LCP SPEED BOOST */}
-        {/* Tells the mobile browser to connect to your image servers immediately, bypassing the critical render path delay */}
-        <link rel="preconnect" href="https://cdn.stuhive.in" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
+        {/* ✅ FIXED: Removed crossOrigin (not needed for basic images) and added Google Avatars */}
+        <link rel="preconnect" href="https://cdn.stuhive.in" />
+        <link rel="preconnect" href="https://res.cloudinary.com" />
+        <link rel="preconnect" href="https://lh3.googleusercontent.com" />
       </head>
       
       <body className={`${inter.className} min-h-screen flex flex-col bg-background text-foreground antialiased`}>
