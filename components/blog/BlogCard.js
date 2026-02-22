@@ -1,19 +1,17 @@
 import Link from "next/link";
-import Image from "next/image"; // ✅ Imported Next.js Image
+import Image from "next/image"; 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, ArrowRight, Star, Eye, ShieldCheck } from "lucide-react"; 
 import { formatDate } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-// ✅ Added `priority` prop to handle the LCP fix from the parent component
 export default function BlogCard({ blog, priority = false }) {
   const readTime = blog.readTime || 3; 
   const rating = blog.rating || 0;
   const views = blog.viewCount || 0;
   const isAdmin = blog.author?.role === 'admin';
 
-  // FIXED GSC ERROR: Removed aggregateRating which is not supported for BlogPosting
   const blogSchema = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
@@ -44,20 +42,22 @@ export default function BlogCard({ blog, priority = false }) {
       />
       
       <Link href={`/blogs/${blog.slug}`} title={`Read: ${blog.title}`} className="block h-full group">
-        <Card className="h-full overflow-hidden transition-all duration-300 hover:shadow-[0_0_20px_rgba(102,126,234,0.15)] hover:border-primary/40 flex flex-col bg-[#0a0a0a] border border-white/10 hover:-translate-y-1">
+        {/* Added transform-gpu and translate-z-0 to prevent sub-pixel flickering */}
+        <Card className="h-full overflow-hidden transition-all duration-300 hover:shadow-[0_0_20px_rgba(102,126,234,0.15)] hover:border-primary/40 flex flex-col bg-[#0a0a0a] border border-white/10 hover:-translate-y-1 transform-gpu">
           
-          {/* Cover Image */}
-          <div className="relative h-44 w-full overflow-hidden bg-secondary/20 shrink-0">
+          {/* Cover Image Wrapper */}
+          {/* Added -mb-[1px] and relative z-0 to overlap the seam slightly and kill the flicker */}
+          <div className="relative h-44 w-full overflow-hidden bg-secondary/20 shrink-0 -mb-[1px] z-0">
             {blog.coverImage ? (
-              // ✅ FIXED: Using Next.js Image with `unoptimized` and dynamic `priority`
               <Image 
                 src={blog.coverImage} 
                 alt={`Cover for ${blog.title}`} 
-                width={600}
-                height={400}
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 priority={priority}
                 unoptimized={true}
-                className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
+                // Added will-change-transform and scale-[1.01] to keep image "active" for the GPU
+                className="object-cover transition-transform duration-500 group-hover:scale-105 will-change-transform transform-gpu"
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-secondary/5">
@@ -72,12 +72,14 @@ export default function BlogCard({ blog, priority = false }) {
                 </Badge>
               ))}
             </div>
-            <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#0a0a0a] to-transparent opacity-80" aria-hidden="true" />
+            {/* Dark gradient overlap to further hide the seam */}
+            <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#0a0a0a] to-transparent opacity-90 z-10" aria-hidden="true" />
           </div>
 
-          <CardContent className="flex flex-col flex-grow p-4 sm:p-5">
+          {/* Card Content */}
+          {/* Added relative z-10 to ensure it sits cleanly above the image overlap */}
+          <CardContent className="flex flex-col flex-grow p-4 sm:p-5 relative z-10 bg-[#0a0a0a]">
             
-            {/* Metadata Row */}
             <div className="flex items-center gap-x-3 text-[10px] font-bold uppercase tracking-wider text-gray-300 mb-2">
               <span className="flex items-center gap-1" aria-label={`Published on ${formatDate(blog.createdAt)}`}>
                 <Calendar className="w-3 h-3 text-cyan-400" aria-hidden="true" /> {formatDate(blog.createdAt)}
@@ -94,7 +96,6 @@ export default function BlogCard({ blog, priority = false }) {
               {blog.title}
             </h3>
             
-            {/* Star Ratings */}
             <div className="flex items-center gap-2 mb-3" aria-label={`Rated ${rating.toFixed(1)} out of 5 stars by ${blog.numReviews || 0} reviewers`}>
               <div className="flex gap-0.5" aria-hidden="true">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -109,7 +110,6 @@ export default function BlogCard({ blog, priority = false }) {
               </span>
             </div>
             
-            {/* Description */}
             <p className="text-gray-300 text-xs leading-relaxed line-clamp-2 mb-4 flex-grow font-medium">
               {blog.summary || blog.excerpt || "Click to read the full article on StuHive..."}
             </p>
