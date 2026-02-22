@@ -9,14 +9,14 @@ import PWARegister from "@/components/common/PWARegister";
 
 const inter = Inter({ subsets: ["latin"] });
 
-// ✅ App-wide Viewport & Theme Settings
-// This ensures Google's mobile-friendly test passes with a 100/100 score.
+// ✅ 1. FIXED VIEWPORT FOR 100/100 BEST PRACTICES & ACCESSIBILITY
+// Lighthouse strictly requires users to be able to zoom in up to 5x for visual accessibility.
 export const viewport = {
   themeColor: "#00d4ff",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false, // Prevents accidental zooming on mobile inputs
+  maximumScale: 5, // Increased from 1 to 5 to pass Lighthouse Best Practices
+  // userScalable: false, // REMOVED: This is flagged as an accessibility violation by Google
 };
 
 // ✅ Global SEO Safety Net
@@ -42,7 +42,6 @@ export const metadata = {
       { url: "/logo192.png", sizes: "180x180", type: "image/png" },
     ],
   },
-  // OpenGraph defaults for pages that don't define their own
   openGraph: {
     type: "website",
     locale: "en_US",
@@ -62,6 +61,13 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className="dark">
+      <head>
+        {/* ✅ 2. NETWORK PRECONNECTS FOR LCP SPEED BOOST */}
+        {/* Tells the mobile browser to connect to your image servers immediately, bypassing the critical render path delay */}
+        <link rel="preconnect" href="https://cdn.stuhive.in" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
+      </head>
+      
       <body className={`${inter.className} min-h-screen flex flex-col bg-background text-foreground antialiased`}>
         {/* ✅ AUTH PROVIDER: Supplies session context to useSession() across the app */}
         <AuthProvider>
