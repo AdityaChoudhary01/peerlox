@@ -73,23 +73,21 @@ export default async function BlogDetailPage({ params }) {
   };
 
   const MarkdownComponents = {
+    // ✅ ACCESSIBILITY: Heading hierarchy re-mapped to prevent skipping levels
     h1: ({ node, ...props }) => <h2 className="text-3xl md:text-4xl font-extrabold mt-12 mb-6 text-white tracking-tight" {...props} />,
     h2: ({ node, ...props }) => <h3 className="text-2xl md:text-3xl font-bold mt-10 mb-4 pb-2 border-b border-white/10 text-white/90 tracking-tight" {...props} />,
     h3: ({ node, ...props }) => <h4 className="text-xl md:text-2xl font-semibold mt-8 mb-3 text-white/90" {...props} />,
     
-    // ✅ FIX: Prevent <p> from wrapping block-level elements like <figure>
+    // ✅ HYDRATION FIX: Prevent <p> from wrapping <figure>
     p: ({ node, children, ...props }) => {
-      // Check if the children contains an image (img tag)
-      // This is a standard workaround for react-markdown to avoid <p><figure></p>
       if (node.children[0]?.tagName === "img") {
-        return <>{children}</>; // Just return the children (the figure/img) without the <p>
+        return <>{children}</>;
       }
-      return <p className="leading-7 md:leading-8 text-base md:text-lg text-gray-300 mb-6 last:mb-0" {...props}>{children}</p>;
+      return <p className="leading-7 md:leading-8 text-base md:text-lg text-gray-200 mb-6 last:mb-0" {...props}>{children}</p>;
     },
 
     ul: ({ node, ...props }) => <ul className="list-disc list-outside pl-6 mb-6 space-y-2 text-gray-300 marker:text-cyan-400" {...props} />,
     ol: ({ node, ...props }) => <ol className="list-decimal list-outside pl-6 mb-6 space-y-2 text-gray-300 marker:text-cyan-400 font-medium" {...props} />,
-    li: ({ node, ...props }) => <li className="leading-7 md:leading-8 text-base md:text-lg pl-2" {...props} />,
     a: ({ node, ...props }) => <a className="text-cyan-400 hover:text-cyan-300 underline underline-offset-4 transition-colors" target="_blank" rel="noopener noreferrer" {...props} />,
     
     img: ({ node, ...props }) => (
@@ -138,10 +136,11 @@ export default async function BlogDetailPage({ params }) {
           {blog.title}
         </h1>
 
-        <div className="w-full max-w-4xl bg-white/[0.05] border border-white/20 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+        {/* ✅ FIXED ACCESSIBILITY: Increased contrast bg-white/[0.05] -> 0.1 and border opacity */}
+        <div className="w-full max-w-4xl bg-white/[0.1] border border-white/30 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
            <AuthorInfoBlock user={blog.author} />
            <div className="hidden md:block w-px h-12 bg-white/20" />
-           <div className="flex flex-wrap items-center justify-center md:justify-end gap-x-6 gap-y-3 text-sm font-medium text-gray-300">
+           <div className="flex flex-wrap items-center justify-center md:justify-end gap-x-6 gap-y-3 text-sm font-medium text-gray-200">
              <span className="flex items-center gap-2">
                <Calendar className="w-4 h-4 text-primary" aria-hidden="true" />
                <time dateTime={blog.createdAt}>{formatDate(blog.createdAt)}</time>
@@ -154,10 +153,11 @@ export default async function BlogDetailPage({ params }) {
                 <Eye className="w-4 h-4 text-cyan-400" aria-hidden="true" />
                 {blog.viewCount + 1 || 1}
              </span>
-             <span className="flex items-center gap-2 text-white bg-white/10 px-3 py-1 rounded-full border border-white/20">
+             {/* ✅ FIXED CONTRAST: Changed gray-500/gray-300 to white/90 and increased bg opacity */}
+             <span className="flex items-center gap-2 text-white bg-white/20 px-3 py-1 rounded-full border border-white/30">
                 <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" aria-hidden="true" />
                 <span>
-                   {averageRating} <span className="text-gray-300 font-normal">({totalReviews})</span>
+                   {averageRating} <span className="text-white/80 font-normal">({totalReviews})</span>
                 </span>
              </span>
            </div>
@@ -195,6 +195,8 @@ export default async function BlogDetailPage({ params }) {
         </div>
 
         <section className="border-t border-white/20 pt-12">
+          {/* ✅ ACCESSIBILITY: Providing an explicit heading for the related section */}
+          <h2 className="sr-only">Related Articles</h2>
           <RelatedBlog blogs={relatedBlogs} />
         </section>
       </footer>
