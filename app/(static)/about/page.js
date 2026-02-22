@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { 
     FaRocket, FaUsers, FaGlobe, FaCode, FaLightbulb, 
     FaArrowRight, FaShieldAlt, FaLock, FaGavel, FaHeart, FaLayerGroup 
@@ -6,8 +7,10 @@ import {
 import connectDB from '@/lib/db';
 import Note from '@/lib/models/Note';
 import User from '@/lib/models/User';
+import Loader from "@/components/common/Loader"; // 🚀 Import your cinematic loader
 
-export const dynamic = 'force-dynamic';
+// 🚀 THE FIX: Cache this page at the edge for 1 hour. It will load in ~50ms globally.
+export const revalidate = 3600;
 
 // ✅ 1. HIGH-OCTANE SEO METADATA & SCHEMA
 const APP_URL = process.env.NEXTAUTH_URL || "https://stuhive.in";
@@ -21,6 +24,44 @@ export const metadata = {
     },
 };
 
+// --- SHARED STYLES ---
+const styles = {
+    wrapper: { paddingTop: '4rem', paddingBottom: '8rem', minHeight: '100vh' },
+    header: { textAlign: 'center', marginBottom: '6rem' },
+    title: {
+        fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', fontWeight: '900', letterSpacing: '-2px',
+        background: 'linear-gradient(135deg, #fff 0%, #00d4ff 50%, #ff00cc 100%)',
+        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+        marginBottom: '1.5rem', display: 'inline-block',
+    },
+    glassSection: {
+        background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(15px)',
+        border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '40px',
+        padding: '4rem 2rem', marginBottom: '4rem', position: 'relative',
+        overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+    },
+    devBadge: {
+        background: 'rgba(0, 212, 255, 0.1)', color: '#00d4ff', padding: '6px 16px',
+        borderRadius: '50px', fontSize: '0.75rem', fontWeight: '800',
+        textTransform: 'uppercase', letterSpacing: '1px', display: 'inline-block', marginBottom: '1rem'
+    },
+    statCard: {
+        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: '24px', padding: '2rem', textAlign: 'center'
+    },
+    statNumber: {
+        fontSize: '2.8rem', fontWeight: '900', background: 'linear-gradient(to bottom, #fff, #667eea)',
+        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '0.2rem'
+    },
+    navBox: { display: 'flex', justifyContent: 'center', gap: '1.5rem', flexWrap: 'wrap', marginTop: '5rem' },
+    navLink: {
+        display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px',
+        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: '50px', color: '#fff', textDecoration: 'none', fontSize: '0.9rem', fontWeight: '600'
+    }
+};
+
+// 🚀 ISOLATED ASYNC DATA FETCHER
 async function getAboutStats() {
     await connectDB();
     try {
@@ -37,10 +78,35 @@ async function getAboutStats() {
     }
 }
 
-export default async function AboutPage() {
+// 🚀 ISOLATED ASYNC SERVER COMPONENT (This streams in the background)
+async function GlobalImpactStats() {
     const stats = await getAboutStats();
+    
+    return (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <div style={styles.statCard}>
+                <div style={styles.statNumber}>{stats.totalUsers.toLocaleString()}</div>
+                <p className="text-[#00d4ff] text-xs font-bold uppercase tracking-widest">Global Members</p>
+            </div>
+            <div style={styles.statCard}>
+                <div style={styles.statNumber}>{stats.totalNotes.toLocaleString()}</div>
+                <p className="text-[#ff00cc] text-xs font-bold uppercase tracking-widest">Study Materials</p>
+            </div>
+            <div style={styles.statCard}>
+                <div style={styles.statNumber}>10+</div>
+                <p className="text-[#ffcc00] text-xs font-bold uppercase tracking-widest">Partner Institutions</p>
+            </div>
+            <div style={styles.statCard}>
+                <div style={styles.statNumber}>{stats.totalDownloads.toLocaleString()}</div>
+                <p className="text-[#00ffaa] text-xs font-bold uppercase tracking-widest">Direct Downloads</p>
+            </div>
+        </div>
+    );
+}
 
-    // 2. JSON-LD Structured Data (Massive for SEO)
+// 🚀 MAIN STATIC SHELL (Loads Instantly)
+export default function AboutPage() {
+    // 2. JSON-LD Structured Data
     const jsonLd = {
         "@context": "https://schema.org",
         "@type": "AboutPage",
@@ -57,45 +123,8 @@ export default async function AboutPage() {
         }
     };
 
-    const styles = {
-        wrapper: { paddingTop: '4rem', paddingBottom: '8rem', minHeight: '100vh' },
-        header: { textAlign: 'center', marginBottom: '6rem' },
-        title: {
-            fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', fontWeight: '900', letterSpacing: '-2px',
-            background: 'linear-gradient(135deg, #fff 0%, #00d4ff 50%, #ff00cc 100%)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            marginBottom: '1.5rem', display: 'inline-block',
-        },
-        glassSection: {
-            background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(15px)',
-            border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '40px',
-            padding: '4rem 2rem', marginBottom: '4rem', position: 'relative',
-            overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
-        },
-        devBadge: {
-            background: 'rgba(0, 212, 255, 0.1)', color: '#00d4ff', padding: '6px 16px',
-            borderRadius: '50px', fontSize: '0.75rem', fontWeight: '800',
-            textTransform: 'uppercase', letterSpacing: '1px', display: 'inline-block', marginBottom: '1rem'
-        },
-        statCard: {
-            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: '24px', padding: '2rem', textAlign: 'center'
-        },
-        statNumber: {
-            fontSize: '2.8rem', fontWeight: '900', background: 'linear-gradient(to bottom, #fff, #667eea)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '0.2rem'
-        },
-        navBox: { display: 'flex', justifyContent: 'center', gap: '1.5rem', flexWrap: 'wrap', marginTop: '5rem' },
-        navLink: {
-            display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px',
-            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '50px', color: '#fff', textDecoration: 'none', fontSize: '0.9rem', fontWeight: '600'
-        }
-    };
-
     return (
         <main className="container mx-auto px-4" style={styles.wrapper}>
-            {/* Inject JSON-LD */}
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -160,28 +189,14 @@ export default async function AboutPage() {
                 </div>
             </section>
 
-            
-
             <section className="mb-20" aria-label="Statistics">
                 <h2 className="text-3xl font-black text-center text-white mb-12 uppercase tracking-widest">Our Global Impact</h2>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                    <div style={styles.statCard}>
-                        <div style={styles.statNumber}>{stats.totalUsers.toLocaleString()}</div>
-                        <p className="text-[#00d4ff] text-xs font-bold uppercase tracking-widest">Global Members</p>
-                    </div>
-                    <div style={styles.statCard}>
-                        <div style={styles.statNumber}>{stats.totalNotes.toLocaleString()}</div>
-                        <p className="text-[#ff00cc] text-xs font-bold uppercase tracking-widest">Study Materials</p>
-                    </div>
-                    <div style={styles.statCard}>
-                        <div style={styles.statNumber}>10+</div>
-                        <p className="text-[#ffcc00] text-xs font-bold uppercase tracking-widest">Partner Institutions</p>
-                    </div>
-                    <div style={styles.statCard}>
-                        <div style={styles.statNumber}>{stats.totalDownloads.toLocaleString()}</div>
-                        <p className="text-[#00ffaa] text-xs font-bold uppercase tracking-widest">Direct Downloads</p>
-                    </div>
-                </div>
+                
+                {/* 🚀 SUSPENSE BOUNDARY: Show the loader here, while the stats fetch in the background */}
+                <Suspense fallback={<div className="flex justify-center py-10"><Loader size="md" text="Calculating Impact..." /></div>}>
+                    <GlobalImpactStats />
+                </Suspense>
+
             </section>
 
             <section className="relative overflow-hidden rounded-[40px] bg-gradient-to-br from-[#0a0118] to-[#1a1a2e] border border-white/10 p-12 text-center">

@@ -6,7 +6,7 @@ import BlogInteractions from "@/components/blog/BlogInteractions";
 import AuthorInfoBlock from "@/components/common/AuthorInfoBlock";
 import RelatedBlog from "@/components/blog/RelatedBlogs"; 
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Star, MessageCircle, Eye } from "lucide-react"; // Added Eye icon
+import { Calendar, Clock, Star, MessageCircle, Eye } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 // --- Markdown & Syntax Highlighting Imports ---
@@ -54,7 +54,7 @@ export async function generateMetadata({ params }) {
 export default async function BlogDetailPage({ params }) {
   const resolvedParams = await params;
   
-  // 🚀 PARALLEL FETCHING: Cut load time in half
+  // 🚀 PARALLEL FETCHING: Fetch session and blog at the exact same time
   const [session, blog] = await Promise.all([
     getServerSession(authOptions),
     getBlogBySlug(resolvedParams.slug)
@@ -65,6 +65,7 @@ export default async function BlogDetailPage({ params }) {
   // 🚀 NON-BLOCKING INCREMENT: Fire and forget the view counter
   incrementBlogViews(blog._id).catch(() => {});
 
+  // Fetch related blogs AFTER we have the main blog ID
   const relatedBlogs = await getRelatedBlogs(blog._id);
 
   // --- Metrics ---
@@ -103,30 +104,14 @@ export default async function BlogDetailPage({ params }) {
   };
 
   const MarkdownComponents = {
-    h1: ({ node, ...props }) => (
-      <h1 className="text-3xl md:text-4xl font-extrabold mt-12 mb-6 text-foreground tracking-tight" {...props} />
-    ),
-    h2: ({ node, ...props }) => (
-      <h2 className="text-2xl md:text-3xl font-bold mt-10 mb-4 pb-2 border-b border-border text-foreground/90 tracking-tight" {...props} />
-    ),
-    h3: ({ node, ...props }) => (
-      <h3 className="text-xl md:text-2xl font-semibold mt-8 mb-3 text-foreground/90" {...props} />
-    ),
-    p: ({ node, ...props }) => (
-      <p className="leading-7 md:leading-8 text-base md:text-lg text-muted-foreground mb-6 last:mb-0" {...props} />
-    ),
-    ul: ({ node, ...props }) => (
-      <ul className="list-disc list-outside ml-6 mb-6 space-y-2 text-muted-foreground marker:text-primary" {...props} />
-    ),
-    ol: ({ node, ...props }) => (
-      <ol className="list-decimal list-outside ml-6 mb-6 space-y-2 text-muted-foreground marker:font-bold" {...props} />
-    ),
-    blockquote: ({ node, ...props }) => (
-      <blockquote className="border-l-4 border-primary bg-secondary/30 px-6 py-4 my-8 rounded-r-lg italic text-lg text-foreground/80 shadow-sm" {...props} />
-    ),
-    a: ({ node, ...props }) => (
-      <a className="text-primary font-medium underline underline-offset-4 hover:text-primary/80 transition-colors" {...props} />
-    ),
+    h1: ({ node, ...props }) => <h1 className="text-3xl md:text-4xl font-extrabold mt-12 mb-6 text-foreground tracking-tight" {...props} />,
+    h2: ({ node, ...props }) => <h2 className="text-2xl md:text-3xl font-bold mt-10 mb-4 pb-2 border-b border-border text-foreground/90 tracking-tight" {...props} />,
+    h3: ({ node, ...props }) => <h3 className="text-xl md:text-2xl font-semibold mt-8 mb-3 text-foreground/90" {...props} />,
+    p: ({ node, ...props }) => <p className="leading-7 md:leading-8 text-base md:text-lg text-muted-foreground mb-6 last:mb-0" {...props} />,
+    ul: ({ node, ...props }) => <ul className="list-disc list-outside ml-6 mb-6 space-y-2 text-muted-foreground marker:text-primary" {...props} />,
+    ol: ({ node, ...props }) => <ol className="list-decimal list-outside ml-6 mb-6 space-y-2 text-muted-foreground marker:font-bold" {...props} />,
+    blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-primary bg-secondary/30 px-6 py-4 my-8 rounded-r-lg italic text-lg text-foreground/80 shadow-sm" {...props} />,
+    a: ({ node, ...props }) => <a className="text-primary font-medium underline underline-offset-4 hover:text-primary/80 transition-colors" {...props} />,
     code: ({ node, inline, className, children, ...props }) => {
       const match = /language-(\w+)/.exec(className || "");
       if (!inline && match) {
@@ -150,42 +135,22 @@ export default async function BlogDetailPage({ params }) {
           </div>
         );
       }
-      return (
-        <code className="bg-primary/10 text-primary font-mono text-sm px-1.5 py-0.5 rounded border border-primary/20" {...props}>
-          {children}
-        </code>
-      );
+      return <code className="bg-primary/10 text-primary font-mono text-sm px-1.5 py-0.5 rounded border border-primary/20" {...props}>{children}</code>;
     },
     img: ({ node, ...props }) => (
       <figure className="relative w-full my-10">
-        <img 
-          className="rounded-2xl shadow-lg border border-border w-full h-auto object-cover" 
-          alt={props.alt || blog.title} 
-          referrerPolicy="no-referrer" 
-          {...props} 
-        />
+        <img className="rounded-2xl shadow-lg border border-border w-full h-auto object-cover" alt={props.alt || blog.title} referrerPolicy="no-referrer" {...props} />
         {props.alt && <figcaption className="block text-center text-sm text-muted-foreground mt-2 italic">{props.alt}</figcaption>}
       </figure>
     ),
-    table: ({ node, ...props }) => (
-      <div className="overflow-x-auto my-8 border border-border rounded-lg shadow-sm">
-        <table className="w-full text-left text-sm" {...props} />
-      </div>
-    ),
-    th: ({ node, ...props }) => (
-      <th className="bg-secondary/50 p-4 font-semibold text-foreground border-b border-border" {...props} />
-    ),
-    td: ({ node, ...props }) => (
-      <td className="p-4 border-b border-border/50 text-muted-foreground" {...props} />
-    ),
+    table: ({ node, ...props }) => <div className="overflow-x-auto my-8 border border-border rounded-lg shadow-sm"><table className="w-full text-left text-sm" {...props} /></div>,
+    th: ({ node, ...props }) => <th className="bg-secondary/50 p-4 font-semibold text-foreground border-b border-border" {...props} />,
+    td: ({ node, ...props }) => <td className="p-4 border-b border-border/50 text-muted-foreground" {...props} />,
   };
 
   return (
     <article className="container max-w-5xl py-12 px-4 sm:px-6">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       
       <header className="flex flex-col items-center text-center mb-12 space-y-8">
         <div className="flex flex-wrap justify-center gap-2">
@@ -214,7 +179,8 @@ export default async function BlogDetailPage({ params }) {
              </span>
              <span className="flex items-center gap-2">
                 <Eye className="w-4 h-4 text-cyan-400" aria-hidden="true" />
-                {blog.views || 0}
+                {/* 🚀 FIXED: Now uses viewCount and updates optimistically */}
+                {blog.viewCount + 1 || 1}
              </span>
              <span className="flex items-center gap-2 text-foreground bg-secondary/50 px-3 py-1 rounded-full">
                 <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" aria-hidden="true" />
@@ -238,10 +204,7 @@ export default async function BlogDetailPage({ params }) {
       )}
 
       <section className="max-w-none mb-24 prose prose-invert prose-headings:tracking-tight prose-a:text-primary">
-          <ReactMarkdown 
-            remarkPlugins={[remarkGfm]} 
-            components={MarkdownComponents}
-          >
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={MarkdownComponents}>
             {blog.content}
           </ReactMarkdown>
       </section>
@@ -252,11 +215,7 @@ export default async function BlogDetailPage({ params }) {
              <MessageCircle className="w-6 h-6 text-primary" aria-hidden="true"/> Discussion
            </h3>
            <div className="bg-secondary/5 rounded-3xl p-6 md:p-10 border border-primary/10">
-             <BlogInteractions
-               blogId={blog._id}
-               initialComments={blog.reviews}
-               userId={session?.user?.id}
-             />
+             <BlogInteractions blogId={blog._id} initialComments={blog.reviews} userId={session?.user?.id} />
            </div>
         </div>
 
