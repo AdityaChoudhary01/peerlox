@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image'; // 🚀 Added Next.js Image component
+import Image from 'next/image'; 
 import { usePathname, useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { FaBars, FaTimes, FaSearch, FaSignOutAlt, FaPaperPlane } from 'react-icons/fa';
@@ -106,7 +106,7 @@ export default function Navbar() {
   // 👇 Restored Upload Button in Links
   const navLinks = [
     { path: '/search', label: 'Search Notes' },
-    { path: '/notes/upload', label: 'Upload' }, // Added back
+    { path: '/notes/upload', label: 'Upload' }, 
     { path: '/blogs', label: 'Blogs' },
     { path: '/about', label: 'About' },
     { path: '/contact', label: 'Contact' },
@@ -178,8 +178,11 @@ export default function Navbar() {
 
             {!isMobile && (
               <form onSubmit={handleSearch} style={styles.searchForm}>
-                <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={styles.searchInput} />
-                <button type="submit" style={styles.searchButton}><FaSearch size={14} /></button>
+                {/* FIXED: Added aria-label for accessibility */}
+                <input type="text" placeholder="Search..." aria-label="Search term" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={styles.searchInput} />
+                <button type="submit" aria-label="Submit search" style={styles.searchButton}>
+                  <FaSearch aria-hidden="true" size={14} />
+                </button>
               </form>
             )}
 
@@ -188,20 +191,23 @@ export default function Navbar() {
                 <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} className="animate-pulse" />
               ) : session ? (
                 <>
-                  <Link href="/chat" style={styles.iconButton}>
-                    <FaPaperPlane size={14} />
+                  {/* FIXED: Added aria-labels to icon-only buttons/links */}
+                  <Link href="/chat" aria-label="Messages" style={styles.iconButton}>
+                    <FaPaperPlane aria-hidden="true" size={14} />
                     {unreadTotal > 0 && <span style={styles.notificationBadge}>{unreadTotal}</span>}
                   </Link>
-                  <Link href="/profile">
+                  <Link href="/profile" aria-label="View Profile">
                     <Image 
                       src={session.user.image || session.user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user.name)}&size=80`} 
-                      alt="Profile" 
+                      alt={`${session.user.name}'s Profile`} 
                       width={38} 
                       height={38} 
                       style={styles.userAvatar} 
                     />
                   </Link>
-                  <button onClick={handleLogout} style={styles.logoutButton}><FaSignOutAlt size={14} /></button>
+                  <button onClick={handleLogout} aria-label="Logout" style={styles.logoutButton}>
+                    <FaSignOutAlt aria-hidden="true" size={14} />
+                  </button>
                 </>
               ) : (
                 <>
@@ -211,8 +217,9 @@ export default function Navbar() {
               )}
 
               {isMobile && (
-                <button onClick={() => setMenuOpen(!menuOpen)} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>
-                  {menuOpen ? <FaTimes /> : <FaBars />}
+                // FIXED: Added accessible name and hid icon from screen reader
+                <button aria-label={menuOpen ? "Close menu" : "Open menu"} onClick={() => setMenuOpen(!menuOpen)} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>
+                  {menuOpen ? <FaTimes aria-hidden="true" /> : <FaBars aria-hidden="true" />}
                 </button>
               )}
             </div>
@@ -226,12 +233,18 @@ export default function Navbar() {
         <div style={styles.mobileMenu}>
            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
               <span style={{ color: 'white', fontWeight: 'bold', fontSize: '1.2rem' }}>Menu</span>
-              <button onClick={() => setMenuOpen(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}><FaTimes size={24} /></button>
+              {/* FIXED: Added aria-label */}
+              <button aria-label="Close menu" onClick={() => setMenuOpen(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>
+                <FaTimes aria-hidden="true" size={24} />
+              </button>
            </div>
           <div style={{marginBottom: '2rem'}}>
             <form onSubmit={handleSearch} style={{...styles.searchForm, display: 'flex', width: '100%', padding: '8px'}}>
-              <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={styles.searchInput} />
-              <button type="submit" style={styles.searchButton}><FaSearch size={14} /></button>
+              {/* FIXED: Added aria-label */}
+              <input type="text" placeholder="Search..." aria-label="Search term" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={styles.searchInput} />
+              <button type="submit" aria-label="Submit search" style={styles.searchButton}>
+                <FaSearch aria-hidden="true" size={14} />
+              </button>
             </form>
           </div>
           <div style={{display: 'flex', flexDirection: 'column', gap: '0.2rem'}}>
@@ -246,7 +259,7 @@ export default function Navbar() {
               <>
                 <Link href="/chat" onClick={() => setMenuOpen(false)} style={styles.mobileLink}>
                     <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                      <FaPaperPlane color="#667eea"/> Messages 
+                      <FaPaperPlane aria-hidden="true" color="#667eea"/> Messages 
                       {unreadTotal > 0 && <span style={{...styles.notificationBadge, position: 'static', marginLeft: 'auto'}}>{unreadTotal}</span>}
                     </div>
                 </Link>
@@ -254,13 +267,15 @@ export default function Navbar() {
                   <div style={{ width: 24, height: 24, position: 'relative', overflow: 'hidden', borderRadius: '50%' }}>
                     <Image 
                       src={session.user.image || session.user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user.name)}`} 
-                      alt="Profile"
+                      alt={`${session.user.name}'s Profile`}
                       fill
                       style={{ objectFit: 'cover' }} 
                     />
                   </div> Profile
                 </Link>
-                <button onClick={handleLogout} style={{...styles.mobileLink, color: '#ff3b30', background: 'rgba(255, 59, 48, 0.05)', border: 'none', justifyContent: 'center', width: '100%', marginTop: 'auto'}}><FaSignOutAlt /> Logout</button>
+                <button onClick={handleLogout} style={{...styles.mobileLink, color: '#ff3b30', background: 'rgba(255, 59, 48, 0.05)', border: 'none', justifyContent: 'center', width: '100%', marginTop: 'auto'}}>
+                  <FaSignOutAlt aria-hidden="true" /> Logout
+                </button>
               </>
             ) : (
               <>

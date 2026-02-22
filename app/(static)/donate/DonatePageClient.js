@@ -13,7 +13,7 @@ export default function DonatePageClient() {
     const [tilt, setTilt] = useState({ x: 0, y: 0 });
     const heroRef = useRef(null);
 
-    const bmacProfileUrl = "https://res.cloudinary.com/dmtnonxtt/image/upload/v1770372018/ffls1v2ohyjhc67ikdpe.png";
+    const bmacProfileUrl = "https://res.cloudinary.com/dmtnonxtt/image/upload/v1771760208/ycmuivb92hyqwqrwkaoi.webp";
     const bmacLink = "https://coff.ee/adityachoudhary";
 
     const handleMouseMove = (e) => {

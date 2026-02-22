@@ -20,7 +20,6 @@ export default function StarRating({
   return (
     <div 
       className={cn("flex items-center gap-1", className)}
-      // ✅ SEO & A11y: Tells screen readers and bots this is a rating group
       role="img" 
       aria-label={`Rating: ${rating} out of ${max} stars`}
     >
@@ -29,49 +28,47 @@ export default function StarRating({
         const isFull = rating >= starValue;
         const isHalf = rating >= starValue - 0.5 && rating < starValue;
 
+        // FIXED: Only use <button> if interactive. Otherwise use a <div> to prevent "Button missing accessible name" errors.
+        const Wrapper = interactive ? "button" : "div";
+        
         return (
-          <button
+          <Wrapper
             key={index}
-            type="button" 
-            disabled={!interactive}
-            // ✅ SEO & A11y: Context for interactive elements
+            type={interactive ? "button" : undefined}
+            disabled={interactive ? false : undefined}
             aria-label={interactive ? `Rate ${starValue} out of ${max} stars` : undefined}
             className={cn(
-              "transition-all duration-200 outline-none", 
+              "transition-all duration-200 outline-none flex items-center justify-center", 
               interactive ? "cursor-pointer hover:scale-125 active:scale-95" : "cursor-default"
             )}
             onClick={() => interactive && onRatingChange && onRatingChange(starValue)}
           >
             {isFull ? (
               <Star 
-                className={cn(
-                  "fill-yellow-400 text-yellow-400", 
-                  sizeClasses[size]
-                )} 
-                aria-hidden="true" // Icons are decorative for screen readers
+                className={cn("fill-yellow-400 text-yellow-400", sizeClasses[size])} 
+                aria-hidden="true" 
               />
             ) : isHalf ? (
-              <div className="relative">
-                <Star className={cn("text-muted-foreground/30", sizeClasses[size])} aria-hidden="true" />
-                <div className="absolute inset-0 overflow-hidden w-1/2">
+              <div className="relative flex items-center justify-center">
+                <Star className={cn("text-white/20", sizeClasses[size])} aria-hidden="true" />
+                <div className="absolute inset-0 overflow-hidden w-1/2 flex items-center">
                     <Star className={cn("fill-yellow-400 text-yellow-400", sizeClasses[size])} aria-hidden="true" />
                 </div>
               </div>
             ) : (
               <Star 
                 className={cn(
-                  "text-muted-foreground/30 transition-colors", 
+                  "text-white/20 transition-colors", 
                   interactive && "hover:text-yellow-400",
                   sizeClasses[size]
                 )} 
                 aria-hidden="true"
               />
             )}
-          </button>
+          </Wrapper>
         );
       })}
       
-      {/* ✅ SEO: Hidden machine-readable value for crawlers */}
       <span className="sr-only" itemProp="ratingValue">{rating}</span>
     </div>
   );

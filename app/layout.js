@@ -7,7 +7,8 @@ import AuthProvider from "@/components/providers/AuthProvider";
 import AblyProvider from "@/components/providers/AblyProvider";
 import PWARegister from "@/components/common/PWARegister";
 
-const inter = Inter({ subsets: ["latin"] });
+// Replace the current Inter font import line near the top with this:
+const inter = Inter({ subsets: ["latin"], display: "swap" });
 
 // ✅ 1. FIXED VIEWPORT FOR 100/100 BEST PRACTICES & ACCESSIBILITY
 // Lighthouse strictly requires users to be able to zoom in up to 5x for visual accessibility.

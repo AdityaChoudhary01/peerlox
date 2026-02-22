@@ -143,7 +143,7 @@ export default function AboutPage() {
                         <div className="absolute -inset-1 bg-gradient-to-r from-[#00d4ff] to-[#ff00cc] rounded-full blur opacity-40 group-hover:opacity-70 transition duration-1000"></div>
                         <div className="relative w-48 h-48 sm:w-56 sm:h-56 rounded-full border-2 border-white/20 overflow-hidden bg-black">
                             <img 
-                                src="/images/developer.jpg" 
+                                src="https://res.cloudinary.com/dmtnonxtt/image/upload/v1771760208/ycmuivb92hyqwqrwkaoi.webp" 
                                 alt="Aditya Choudhary - Founder of StuHive" 
                                 className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500"
                             />
