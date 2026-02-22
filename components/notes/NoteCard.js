@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image"; // ✅ Imported Next.js Image
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,8 @@ const FileIcon = ({ type, className }) => {
   return <FileType className={className} aria-hidden="true" />;
 };
 
-export default function NoteCard({ note }) {
+// ✅ Added `priority` prop to receive the LCP instruction from the parent
+export default function NoteCard({ note, priority = false }) {
   const { data: session, update: updateSession } = useSession();
   const { toast } = useToast();
   
@@ -42,7 +44,6 @@ export default function NoteCard({ note }) {
     ? `${r2PublicUrl}/${note.thumbnailKey}` 
     : (note.fileType?.startsWith("image/") ? `${r2PublicUrl}/${note.fileKey}` : null);
 
-  // FIXED GSC ERROR: Removed the `aggregateRating` object which is not supported for CreativeWork
   const noteSchema = {
     "@context": "https://schema.org",
     "@type": "CreativeWork",
@@ -114,8 +115,7 @@ export default function NoteCard({ note }) {
 
   return (
     <Card 
-      className="w-full max-w-[400px] mx-auto h-full flex flex-col group relative bg-[#050505] border border-white/10 rounded-[28px] overflow-hidden transition-all duration-500 hover:translate-y-[-6px] hover:shadow-[0_20px_50px_-15px_rgba(34,211,238,0.3)] hover:border-cyan-500/40 isolate"
-      style={{ transform: "translateZ(0)" }}
+      className="w-full max-w-[400px] mx-auto h-full flex flex-col group relative bg-[#050505] border border-white/10 rounded-[28px] overflow-hidden transition-all duration-500 hover:translate-y-[-6px] hover:shadow-[0_20px_50px_-15px_rgba(34,211,238,0.3)] hover:border-cyan-500/40 isolate transform-gpu"
     >
       <script
         type="application/ld+json"
@@ -127,9 +127,9 @@ export default function NoteCard({ note }) {
       <div className="flex flex-col h-full bg-[#050505]">
         
         {/* --- TOP SECTION (IMAGE) --- */}
-        <div className="relative h-48 sm:h-56 w-full shrink-0 transform-gpu overflow-hidden bottom-[-2px]">
+        {/* ✅ FIXED FLICKER: Added -mb-[1px] to overlap seams */}
+        <div className="relative h-48 sm:h-56 w-full shrink-0 transform-gpu overflow-hidden -mb-[1px] z-0">
           
-          {/* FIXED ARIA: Added aria-label to prevent "Buttons do not have an accessible name" error */}
           <button 
             onClick={handleSave} 
             aria-label={isSaved ? "Remove from saved collection" : "Save note to collection"}
@@ -145,24 +145,23 @@ export default function NoteCard({ note }) {
                   <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent z-0 skew-x-12 animate-[shimmer_2.5s_infinite]" />
                 </Badge>
               )}
-              {/* FIXED CONTRAST: Changed bg-black/60 to bg-black/80 and text-cyan-300 to text-cyan-400 */}
               <Badge className="bg-black/80 backdrop-blur-xl border border-white/20 text-cyan-400 text-[9px] font-black uppercase tracking-widest px-3 py-1 shadow-xl truncate max-w-full">
                   {note.subject}
               </Badge>
           </div>
 
-          {/* FIXED SEO/A11Y: Added tabIndex={-1} and aria-hidden="true" to prevent Lighthouse "Identical links have the same purpose" error */}
           <Link href={`/notes/${note._id}`} tabIndex={-1} aria-hidden="true" className="block w-full h-full relative z-10">
             {thumbnailUrl ? (
-              // FIXED PERFORMANCE: Added explicit width, height, loading, and decoding attributes to prevent CLS
-              <img 
+              // ✅ FIXED LCP: Replaced <img> with Next.js <Image> + priority + unoptimized
+              <Image 
                 src={thumbnailUrl} 
                 alt={`Preview of ${note.title}`} 
-                width={400} 
-                height={250} 
-                loading="lazy" 
-                decoding="async" 
-                className="w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-[1.08] opacity-85 group-hover:opacity-100" 
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                priority={priority} // Honors the priority prop passed from SearchPage
+                fetchPriority={priority ? "high" : "auto"} // Forces instant network request
+                unoptimized={true} // Bypasses Vercel's slow image optimization limit
+                className="object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-[1.08] opacity-85 group-hover:opacity-100 will-change-transform transform-gpu" 
               />
             ) : (
               <div className="flex flex-col items-center justify-center h-full gap-3 text-white/30 group-hover:text-cyan-400 transition-all duration-700 bg-white/[0.02]">
@@ -178,12 +177,11 @@ export default function NoteCard({ note }) {
         </div>
 
         {/* --- BOTTOM SECTION (TEXT) --- */}
-        <div className="flex flex-col flex-grow p-5 sm:p-6 pt-5 relative z-40 bg-[#050505] -mt-[1px]">
+        <div className="flex flex-col flex-grow p-5 sm:p-6 pt-5 relative z-10 bg-[#050505]">
           <Link href={`/notes/${note._id}`} title={`Download notes for ${note.course}`} className="flex-grow space-y-3 block mb-6 outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 rounded-lg">
             <h3 className="font-extrabold text-lg sm:text-xl tracking-tight leading-tight line-clamp-2 text-white/95 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-cyan-400 group-hover:to-blue-500 transition-all duration-500">
               {note.title}
             </h3>
-            {/* FIXED CONTRAST: Changed text-white/50 to text-gray-400 */}
             <div className="text-xs text-gray-400 font-semibold flex items-center gap-2 truncate uppercase tracking-wider">
                <School aria-hidden="true" className="w-3.5 h-3.5 text-gray-500 shrink-0" /> 
                <span className="truncate">{note.course}</span> <span className="text-gray-600">•</span> <span className="truncate">{note.university}</span>
@@ -194,7 +192,6 @@ export default function NoteCard({ note }) {
           <div className="flex items-center justify-between text-sm mb-6 flex-wrap gap-2">
               <div className="flex items-center gap-1.5 bg-white/[0.03] shadow-inner px-3.5 py-1.5 rounded-full border border-white/5" aria-label={`Rated ${note.rating || 0} stars`}>
                 <StarRating rating={note.rating} size="sm" />
-                {/* FIXED CONTRAST: Changed text-white/50 to text-gray-400 */}
                 <span className="text-[10px] font-bold text-gray-400 ml-1">({note.numReviews})</span>
               </div>
               <div className="flex items-center text-gray-400 text-[10px] gap-3.5 uppercase tracking-widest font-bold bg-white/[0.03] shadow-inner px-3.5 py-1.5 rounded-full border border-white/5">
@@ -206,7 +203,6 @@ export default function NoteCard({ note }) {
           {/* User Info & Get Button */}
           <div className="flex items-center justify-between gap-4 mt-auto pt-2">
               <div className="flex items-center gap-3 overflow-hidden pr-2 flex-1 min-w-0">
-                {/* FIXED PERFORMANCE: Added width, height, decoding to Avatar image */}
                 <img 
                   src={note.user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(note.user?.name || 'U')}&background=random&color=fff`} 
                   alt={`${note.user?.name}'s avatar`} 
@@ -218,7 +214,6 @@ export default function NoteCard({ note }) {
                 />
                 <div className="flex flex-col min-w-0">
                     <span className="text-[11px] font-extrabold truncate text-white/90">{note.user?.name || "Unknown"}</span>
-                    {/* FIXED CONTRAST: Changed text-white/40 to text-gray-400 */}
                     <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-0.5 truncate">{formatDate(note.uploadDate)}</span>
                 </div>
               </div>
