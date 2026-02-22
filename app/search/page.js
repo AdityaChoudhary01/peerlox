@@ -8,31 +8,28 @@ import Link from "next/link";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://stuhive.in";
 
-// ✅ 1. FIXED & HIGH-OCTANE DYNAMIC METADATA
+// ✅ 1. FIXED DYNAMIC METADATA: Safely awaited searchParams for Next.js 15+
 export async function generateMetadata({ searchParams }) {
-  const { search, university, course, subject, page } = await searchParams;
+  // Await the params object FIRST before destructuring
+  const params = await searchParams;
+  const { search, university, subject, page } = params;
   
-  // We call the action here to get the real count for the SEO description
-  // Next.js will automatically de-duplicate this request if it's called again in the Page
-  const { totalCount } = await getNotes({ search, university, course, subject, limit: 1 });
-
   let dynamicTitle = "Search Academic Notes";
   if (subject) dynamicTitle = `${subject} Notes`;
   if (university) dynamicTitle += ` at ${university}`;
   if (search) dynamicTitle = `Results for "${search}"`;
   
   const pageSuffix = page > 1 ? ` - Page ${page}` : "";
-  const formattedCount = totalCount?.toLocaleString() || "thousands of";
 
   return {
     title: `${dynamicTitle} | StuHive Library${pageSuffix}`,
-    description: `Explore ${formattedCount} verified academic notes, course materials, and exam guides. Filter by university, subject, and course level.`,
+    description: `Explore verified academic notes, course materials, and exam guides. Filter by university, subject, and course level.`,
     alternates: {
       canonical: `${APP_URL}/search`,
     },
     openGraph: {
       title: `${dynamicTitle} | StuHive Archive`,
-      description: `Access a library of ${formattedCount} student-led academic resources.`,
+      description: `Access a comprehensive library of student-led academic resources.`,
       url: `${APP_URL}/search`,
       type: "website",
     },
@@ -40,7 +37,7 @@ export async function generateMetadata({ searchParams }) {
 }
 
 export default async function SearchPage({ searchParams }) {
-  const params = await searchParams; // Ensure params are awaited in Next.js 15+
+  const params = await searchParams; 
   const page = Number(params.page) || 1;
   const search = params.search || "";
   const university = params.university || "";
@@ -132,12 +129,14 @@ export default async function SearchPage({ searchParams }) {
                 </div>
             </header>
 
-            <section aria-label="Search Results Grid">
+            <section aria-labelledby="search-results-heading">
+              <h2 id="search-results-heading" className="sr-only">Search Results Grid</h2>
+              
               {notes.length > 0 ? (
                 <div className="grid grid-cols-2 xl:grid-cols-3 gap-2.5 sm:gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700 justify-items-center">
-                  {notes.map((note) => (
+                  {notes.map((note, index) => (
                     <article key={note._id} className="w-full h-full">
-                        <NoteCard note={note} />
+                        <NoteCard note={note} priority={index < 4} />
                     </article>
                   ))}
                 </div>
@@ -147,9 +146,8 @@ export default async function SearchPage({ searchParams }) {
                       <FaRegFolderOpen className="h-14 w-14 sm:h-20 sm:w-20 text-white/10" aria-hidden="true" />
                       <div className="absolute inset-0 blur-2xl bg-primary/20 rounded-full" aria-hidden="true"></div>
                     </div>
-                    <h3 className="text-xl font-black text-white/60 tracking-tight">Archive Empty</h3>
+                    <h2 className="text-xl font-black text-white/60 tracking-tight">Archive Empty</h2>
                     <p className="text-xs text-white/30 max-w-[200px] mx-auto mt-2 italic">
-                      {/* 🚀 FIX: Escaped apostrophe in haven't */}
                       The requested materials haven&apos;t been indexed yet.
                     </p>
                     <Link href="/search" className="inline-block mt-6 text-[9px] font-black uppercase tracking-widest text-primary hover:text-white transition-colors underline underline-offset-8">
