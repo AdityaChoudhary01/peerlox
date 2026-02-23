@@ -5,15 +5,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import PublicProfileView from "@/components/profile/PublicProfileView";
 
-// ✅ PERFORMANCE FIX 1: Cache this page at the edge for 60 seconds
-// This will drop your TTFB from 1.3s down to ~50ms for repeat visitors
 export const revalidate = 60;
 export const dynamic = "force-dynamic"; 
 
 const APP_URL = process.env.NEXTAUTH_URL || "https://stuhive.in";
 
-// ✅ PERFORMANCE FIX 2: We use React cache() under the hood, but to be safe 
-// we avoid re-fetching the entire user profile in metadata if possible.
 export async function generateMetadata({ params }) {
   const { userId } = await params;
   const user = await getUserProfile(userId);
@@ -21,9 +17,17 @@ export async function generateMetadata({ params }) {
   if (!user) return { title: "User Not Found" };
 
   const profileTitle = `${user.name} | Portfolio & Study Materials | StuHive`;
-  const profileDesc = user.bio 
-    ? `${user.bio.substring(0, 150)}` 
-    : `Explore academic notes and articles contributed by ${user.name} on StuHive.`;
+  
+  // ✅ RICH SEO: Constructs a descriptive meta tag using bio, uni, and location
+  let profileDesc = `Explore academic notes and articles contributed by ${user.name} on StuHive.`;
+  
+  if (user.bio) {
+    profileDesc = `${user.bio.substring(0, 150)}... - ${user.university ? user.university : 'StuHive Contributor'}`; 
+  } else if (user.university || user.location) {
+    const uniStr = user.university ? ` at ${user.university}` : "";
+    const locStr = user.location ? ` in ${user.location}` : "";
+    profileDesc = `${user.name} is a student${uniStr}${locStr}. Explore their academic notes and articles.`;
+  }
 
   return {
     title: profileTitle,
@@ -50,7 +54,6 @@ export async function generateMetadata({ params }) {
 export default async function PublicProfilePage({ params }) {
   const { userId } = await params;
   
-  // ✅ PERFORMANCE FIX 3: Parallelized the Session fetch with the Data fetches
   const [session, profile, notesData, blogs] = await Promise.all([
     getServerSession(authOptions),
     getUserProfile(userId),
@@ -67,7 +70,7 @@ export default async function PublicProfilePage({ params }) {
     "mainEntity": {
       "@type": "Person",
       "name": profile.name,
-      "description": profile.bio,
+      "description": profile.bio || `Student ${profile.university ? 'at ' + profile.university : ''}`,
       "image": profile.avatar,
       "url": `${APP_URL}/profile/${userId}`,
       "knowsAbout": ["Academic Research", "Study Materials"],
@@ -86,10 +89,13 @@ export default async function PublicProfilePage({ params }) {
     ? profile.followers.some(f => (f._id?.toString() || f.toString()) === session.user.id) 
     : false;
 
-  // EXPLICIT SERIALIZATION 
   const serializedProfile = {
     ...profile,
     _id: profile._id.toString(),
+    // ✅ ADDED FALLBACKS: Guarantees Next.js hydration safety for Client Components
+    bio: profile.bio || "",
+    university: profile.university || "",
+    location: profile.location || "",
     followers: (profile.followers || []).map(f => ({
         ...f,
         _id: f._id?.toString() || f.toString()
@@ -114,7 +120,6 @@ export default async function PublicProfilePage({ params }) {
     createdAt: blog.createdAt instanceof Date ? blog.createdAt.toISOString() : new Date(blog.createdAt).toISOString(),
   }));
 
-  // ✅ Added explicit responsive horizontal padding (px-3 sm:px-6 md:px-8) and mx-auto
   return (
     <main className="w-full max-w-6xl mx-auto px-3 sm:px-6 md:px-8 py-8 pt-24">
       <script
@@ -122,7 +127,6 @@ export default async function PublicProfilePage({ params }) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       
-      {/* ✅ ACCESSIBILITY FIX: Added an invisible H1 to satisfy the document hierarchy */}
       <h1 className="sr-only">{profile.name}&apos;s Profile</h1>
 
       <PublicProfileView 

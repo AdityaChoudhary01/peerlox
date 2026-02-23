@@ -7,7 +7,7 @@ import Blog from "@/lib/models/Blog";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { deleteFileFromR2 } from "@/lib/r2"; // ✅ Imported R2 Helper
+import { deleteFileFromR2 } from "@/lib/r2";
 
 /**
  * GET USER PROFILE
@@ -86,10 +86,39 @@ export async function updateUserAvatar(userId, avatarUrl, avatarKey) {
     });
     
     revalidatePath('/profile');
+    revalidatePath(`/profile/${userId}`);
     return { success: true };
   } catch (error) {
     console.error("Update Avatar Error:", error);
     return { success: false, error: "Failed to update avatar" };
+  }
+}
+
+/**
+ * UPDATE USER BIO ONLY (🚀 NEW: For SEO and Profile enrichment)
+ */
+export async function updateUserBio(userId, newBio) {
+  try {
+    await connectDB();
+    const session = await getServerSession(authOptions);
+
+    if (!session || session.user.id !== userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+    
+    // Sanitize and limit the bio length securely on the server
+    const sanitizedBio = newBio ? newBio.trim().substring(0, 300) : "";
+
+    await User.findByIdAndUpdate(userId, { bio: sanitizedBio });
+
+    // Instantly clear cache for SEO indexing and UI updates
+    revalidatePath('/profile');
+    revalidatePath(`/profile/${userId}`);
+    
+    return { success: true, bio: sanitizedBio };
+  } catch (error) {
+    console.error("Failed to update bio:", error);
+    return { success: false, error: "Failed to update bio" };
   }
 }
 

@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSession } from "next-auth/react";
 import { Trash2, Loader2, MoreVertical, Search } from "lucide-react"; 
 import ProfileImageUpload from "@/components/profile/ProfileImageUpload";
+import EditBio from "@/components/profile/EditBio"; // ✅ IMPORTED EDIT BIO
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -177,9 +178,15 @@ export default function ProfileDashboard({ user, initialMyNotes, initialSavedNot
                 </form>
             )}
             <p className="text-muted-foreground mb-4 relative z-10">{user.email}</p>
-            <div className="flex gap-2 mb-6 relative z-10">
+            <div className="flex gap-2 mb-4 relative z-10">
                 <RoleBadge role={user.role} />
             </div>
+
+            {/* ✅ INJECTED EDIT BIO SECTION HERE */}
+            <div className="relative z-10 w-full mb-6">
+                <EditBio user={user} />
+            </div>
+
             <Link href="/feed" className="relative z-10">
                 <Button className="rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 border-0 shadow-lg hover:shadow-xl transition-all">
                     <FaRss className="mr-2" /> My Personalized Feed
