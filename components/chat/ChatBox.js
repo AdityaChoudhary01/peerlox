@@ -50,10 +50,18 @@ function formatTime(dateString) {
 /* ============================= */
 function MessageMenu({ message, isMe, clickY, onReact, onEdit, onDelete, onReply, close }) {
   const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
-  const openUpwards = clickY > viewportHeight / 2;
+  // Make the detection area a bit more forgiving
+  const openUpwards = clickY > viewportHeight * 0.6;
 
-  // Helper to trigger download of attachments
+  const handleAction = (e, action) => {
+    e.preventDefault();
+    e.stopPropagation();
+    action();
+    close();
+  };
+
   const handleDownload = (e) => {
+    e.preventDefault();
     e.stopPropagation();
     const url = message.fileUrl || message.imageUrl;
     if (url) {
@@ -64,33 +72,38 @@ function MessageMenu({ message, isMe, clickY, onReact, onEdit, onDelete, onReply
 
   return (
     <>
+      {/* Invisible overlay to catch clicks outside the menu */}
       <div 
-        className="fixed inset-0 z-40 bg-transparent" 
+        className="fixed inset-0 z-[99]" 
         onClick={(e) => {
           e.stopPropagation();
           close();
         }} 
+        onTouchStart={(e) => {
+          e.stopPropagation();
+          close();
+        }}
       />
       
+      {/* 🚀 FIX: Increased z-index dramatically (z-[100]) so it breaks out of the scroll container */}
       <div 
-        className={`absolute z-50 w-56 sm:w-64 bg-background/95 backdrop-blur-2xl border border-border/50 shadow-2xl rounded-2xl p-3 animate-in fade-in zoom-in-95 duration-200 ${
+        className={`absolute z-[100] w-56 sm:w-64 bg-background/95 backdrop-blur-2xl border border-border/50 shadow-2xl rounded-2xl p-3 animate-in fade-in zoom-in-95 duration-200 ${
           isMe ? "right-0" : "left-0"
         } ${
           openUpwards 
             ? "bottom-[calc(100%+0.5rem)] origin-bottom"
             : "top-[calc(100%+0.5rem)] origin-top"
         }`}
+        onClick={(e) => e.stopPropagation()} // Prevent menu clicks from closing the menu
+        onTouchStart={(e) => e.stopPropagation()} // 🚀 FIX: Essential for mobile so touches don't bubble
       >
         <div className="flex justify-between items-center mb-3 px-1">
           {EMOJIS.map((e, index) => (
             <button
               key={e}
               style={{ animationDelay: `${index * 30}ms` }}
-              onClick={(ev) => {
-                ev.stopPropagation();
-                onReact(e);
-                close();
-              }}
+              onClick={(ev) => handleAction(ev, () => onReact(e))}
+              onTouchEnd={(ev) => handleAction(ev, () => onReact(e))} // 🚀 FIX: Mobile touch handling
               className={`text-xl hover:scale-150 hover:-translate-y-2 active:scale-95 transition-all duration-300 animate-in fade-in ${openUpwards ? 'slide-in-from-bottom-2' : 'slide-in-from-top-2'}`}
             >
               {e}
@@ -101,20 +114,17 @@ function MessageMenu({ message, isMe, clickY, onReact, onEdit, onDelete, onReply
         <div className="border-t border-border/50 pt-2 space-y-1 text-sm font-medium">
           
           <button
-            onClick={(ev) => {
-              ev.stopPropagation();
-              onReply();
-              close();
-            }}
+            onClick={(ev) => handleAction(ev, onReply)}
+            onTouchEnd={(ev) => handleAction(ev, onReply)}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-muted/80 transition-colors text-foreground"
           >
             <Reply className="w-4 h-4 text-muted-foreground" /> Reply
           </button>
 
-          {/* 🚀 NEW: Download Button for Files/Images */}
           {(message.fileUrl || message.imageUrl) && (
              <button
               onClick={handleDownload}
+              onTouchEnd={handleDownload}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-muted/80 transition-colors text-foreground"
             >
               <Download className="w-4 h-4 text-muted-foreground" /> Download
@@ -123,11 +133,8 @@ function MessageMenu({ message, isMe, clickY, onReact, onEdit, onDelete, onReply
 
           {isMe && !message.fileUrl && !message.imageUrl && (
             <button
-              onClick={(ev) => {
-                ev.stopPropagation();
-                onEdit();
-                close();
-              }}
+              onClick={(ev) => handleAction(ev, onEdit)}
+              onTouchEnd={(ev) => handleAction(ev, onEdit)}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-muted/80 transition-colors text-foreground"
             >
               <Edit2 className="w-4 h-4 text-muted-foreground" /> Edit Message
@@ -136,11 +143,8 @@ function MessageMenu({ message, isMe, clickY, onReact, onEdit, onDelete, onReply
 
           {isMe && (
             <button
-              onClick={(ev) => {
-                ev.stopPropagation();
-                onDelete();
-                close();
-              }}
+              onClick={(ev) => handleAction(ev, onDelete)}
+              onTouchEnd={(ev) => handleAction(ev, onDelete)}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-destructive/10 text-destructive transition-colors"
             >
               <Trash2 className="w-4 h-4" /> Delete for Everyone
@@ -160,7 +164,7 @@ function MessageItem({ msg, isMe, isRead, isDelivered, currentUser, recipient, o
   const startX = useRef(0);
   const startY = useRef(0);
   const isDraggingRef = useRef(false);
-  const pressTimerRef = useRef(null); // 🚀 FIXED: Use a ref instead of a local variable
+  const pressTimerRef = useRef(null); 
 
   const handleDragStart = (clientX, clientY) => {
     startX.current = clientX;
@@ -198,8 +202,10 @@ function MessageItem({ msg, isMe, isRead, isDelivered, currentUser, recipient, o
 
   const transitionStyle = dragX > 0 ? 'none' : 'transform 0.2s ease-out';
 
-  // 🚀 FIXED: Mobile Long Press Logic using useRef
   const handleTouchStart = (e) => {
+    // Only start drag tracking if the menu isn't already open
+    if (activeMenu) return; 
+    
     handleDragStart(e.touches[0].clientX, e.touches[0].clientY);
     pressTimerRef.current = setTimeout(() => {
         if (Math.abs(dragX) < 10) {
@@ -218,7 +224,7 @@ function MessageItem({ msg, isMe, isRead, isDelivered, currentUser, recipient, o
       className={`flex w-full ${isMe ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-2 duration-300 relative`}
       onTouchStart={handleTouchStart}
       onTouchMove={(e) => {
-          clearTimeout(pressTimerRef.current); // 🚀 Clear timer cleanly via ref
+          clearTimeout(pressTimerRef.current); 
           handleDragMove(e.touches[0].clientX, e.touches[0].clientY);
       }}
       onTouchEnd={handleTouchEnd}
@@ -238,8 +244,9 @@ function MessageItem({ msg, isMe, isRead, isDelivered, currentUser, recipient, o
         <Reply className="w-4 h-4 text-foreground" />
       </div>
 
+      {/* 🚀 FIX: Ensure the relative container doesn't trap the z-index of the menu */}
       <div 
-        className="relative group max-w-[85%] sm:max-w-[70%] flex flex-col z-10"
+        className={`relative group max-w-[85%] sm:max-w-[70%] flex flex-col ${activeMenu?.id === msg._id ? 'z-50' : 'z-10'}`}
         style={{ transform: `translateX(${dragX}px)`, transition: transitionStyle }}
         onContextMenu={(e) => {
           e.preventDefault();
@@ -259,7 +266,6 @@ function MessageItem({ msg, isMe, isRead, isDelivered, currentUser, recipient, o
             </span>
           ) : (
             <>
-              {/* 🚀 WHATSAPP-STYLE QUOTED REPLY INSIDE THE BUBBLE */}
               {msg.replyTo && (
                 <div className={`mb-1.5 p-2 rounded-xl text-sm border-l-[3px] ${isMe ? 'bg-primary-foreground/15 border-primary-foreground/70 text-primary-foreground/90' : 'bg-background/80 border-primary/60 text-muted-foreground'} flex flex-col gap-0.5 pointer-events-none select-none`}>
                   <span className={`font-bold text-[11px] uppercase tracking-wider ${isMe ? 'text-primary-foreground/90' : 'text-primary'}`}>
@@ -339,6 +345,7 @@ function MessageItem({ msg, isMe, isRead, isDelivered, currentUser, recipient, o
           </button>
         )}
 
+        {/* Render Smart Menu */}
         {activeMenu?.id === msg._id && (
           <MessageMenu
             message={msg}
@@ -725,11 +732,11 @@ function ChatBoxContent({ currentUser, recipient, conversationId, initialMessage
         </Link>
       </div>
 
-      {/* 2. MESSAGES AREA */}
+      {/* 2. MESSAGES AREA - 🚀 FIX: Made overflow visible when a menu is open so it doesn't clip */}
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-4 py-6 space-y-4 scrollbar-thin z-10 bg-secondary/5 relative"
+        className={`flex-1 px-4 py-6 space-y-4 scrollbar-thin bg-secondary/5 relative ${activeMenu ? 'overflow-hidden' : 'overflow-y-auto'}`}
       >
         {isLoadingMore && (
            <div className="w-full flex justify-center py-3">
@@ -763,7 +770,7 @@ function ChatBoxContent({ currentUser, recipient, conversationId, initialMessage
       </div>
 
       {/* 3. INPUT AREA */}
-      <div className="w-full p-3 md:p-4 bg-background border-t border-border/40 shrink-0 z-20 relative">
+      <div className="w-full p-3 md:p-5 bg-background border-t border-border/40 shrink-0 z-20 relative">
         
         {/* Reply Preview Banner */}
         {replyingTo && (
