@@ -83,7 +83,8 @@ const EditBlogForm = ({ blog }) => {
                     const canvas = document.createElement("canvas");
                     const ctx = canvas.getContext("2d");
 
-                    const MAX_WIDTH = 1200;
+                    // 🚀 AGGRESSIVE FIX 1: Reduced MAX_WIDTH from 1200 to 800.
+                    const MAX_WIDTH = 800;
                     let targetWidth = img.width > MAX_WIDTH ? MAX_WIDTH : img.width;
                     let targetHeight = Math.round(targetWidth * (9 / 16));
 
@@ -104,13 +105,14 @@ const EditBlogForm = ({ blog }) => {
 
                     ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, targetWidth, targetHeight);
 
+                    // 🚀 AGGRESSIVE FIX 2: Lowered quality from 0.8 to 0.65.
                     canvas.toBlob((blob) => {
                         if (blob) {
                             resolve(new File([blob], `cover.webp`, { type: "image/webp" }));
                         } else {
                             reject(new Error("Canvas to Blob failed"));
                         }
-                    }, "image/webp", 0.8);
+                    }, "image/webp", 0.65);
                 };
                 img.onerror = (error) => reject(error);
             };
