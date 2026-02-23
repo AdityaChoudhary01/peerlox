@@ -7,28 +7,41 @@ import CollectionActions from "@/components/notes/CollectionActions"; // Client 
 import { FolderOpen, Calendar } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { removeNoteFromCollection } from "@/actions/collection.actions"; // For the remove button
+import { removeNoteFromCollection } from "@/actions/collection.actions"; 
+import Link from "next/link";
 
 export async function generateMetadata({ params }) {
-  const collection = await getCollectionById(params.id);
+  const resolvedParams = await params;
+  
+  const collection = await getCollectionById(resolvedParams.id);
   return {
     title: collection ? `${collection.name} | Collections` : "Collection Not Found",
   };
 }
 
 export default async function ViewCollectionPage({ params }) {
+  const resolvedParams = await params;
+
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
-  const collection = await getCollectionById(params.id);
+  const collection = await getCollectionById(resolvedParams.id);
   
-  // Security: Only owner can view (or you can open it up if you want public collections)
-  if (!collection || collection.user._id !== session.user.id) {
+  if (!collection) {
+    return notFound();
+  }
+
+  // 🚀 THE FIX: Safely extract and convert the MongoDB ObjectId to a string
+  // This handles both populated (user._id) and unpopulated (user) mongoose queries.
+  const collectionOwnerId = collection.user?._id?.toString() || collection.user?.toString();
+
+  // Security: Only owner can view
+  if (collectionOwnerId !== session.user.id) {
     return notFound();
   }
 
   return (
-    <div className="container py-8 min-h-[80vh]">
+    <div className="container py-8 min-h-[80vh] pt-24">
       
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 pb-6 border-b">
@@ -79,7 +92,7 @@ export default async function ViewCollectionPage({ params }) {
             <h3 className="text-xl font-bold text-muted-foreground">This collection is empty</h3>
             <p className="text-sm text-muted-foreground/70 mb-6">Start browsing to add notes here.</p>
             <Button asChild>
-                <a href="/search">Explore Notes</a>
+                <Link href="/search">Explore Notes</Link>
             </Button>
         </div>
       )}

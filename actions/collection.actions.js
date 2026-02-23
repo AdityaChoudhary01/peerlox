@@ -33,13 +33,14 @@ export async function getUserCollections(userId) {
 }
 
 /**
- * 2. FETCH SINGLE COLLECTION WITH NOTES (✨ NEW)
+ * 2. FETCH SINGLE COLLECTION WITH NOTES
  * Gets a specific collection and loads all the Note data inside it.
  */
-export async function getCollectionById(collectionId, userId) {
+export async function getCollectionById(collectionId) { // 🚀 FIX: Removed userId parameter
   await connectDB();
   try {
-    const collection = await Collection.findOne({ _id: collectionId, user: userId })
+    // 🚀 FIX: Removed the 'user: userId' filter so it fetches purely by the Collection ID
+    const collection = await Collection.findOne({ _id: collectionId })
       .populate({
         path: 'notes',
         populate: { path: 'user', select: 'name avatar' } // Load the author details for each note
