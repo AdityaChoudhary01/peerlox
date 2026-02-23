@@ -127,28 +127,54 @@ export async function getNoteById(id) {
 }
 
 /**
- * GET RELATED NOTES
+ * GET RELATED NOTES (Smart Match)
  */
 export async function getRelatedNotes(noteId) {
   await connectDB();
   try {
-    const currentNote = await Note.findById(noteId).select('subject course').lean();
+    // 1. Fetch all necessary comparison fields from the current note
+    const currentNote = await Note.findById(noteId).select('subject course user title').lean();
     if (!currentNote) return [];
 
+    // 2. Build a "Similar Title" Regex 
+    // Splits the title into words, ignores small words (the, and, for), and escapes them safely for Regex.
+    const titleWords = currentNote.title
+      ? currentNote.title
+          .split(/\s+/)
+          .filter(word => word.length > 3) 
+          .map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) // Prevent regex injection
+      : [];
+
+    const titleRegexCondition = titleWords.length > 0 
+      ? { title: { $regex: new RegExp(titleWords.join('|'), 'i') } } 
+      : null;
+
+    // 3. Construct the Smart OR conditions
+    const orConditions = [
+      { user: currentNote.user },       // Match 1: Same Author
+      { subject: currentNote.subject }, // Match 2: Same Subject
+      { course: currentNote.course }    // Match 3: Same Course
+    ];
+
+    // Add the title match condition if we successfully extracted keywords
+    if (titleRegexCondition) {
+      orConditions.push(titleRegexCondition); // Match 4: Similar Title Keywords
+    }
+
+    // 4. Fetch the best matching notes
     const relatedNotes = await Note.find({
-      _id: { $ne: noteId },
-      $or: [
-        { subject: currentNote.subject },
-        { course: currentNote.course }
-      ]
+      _id: { $ne: noteId }, // Exclude the current note itself
+      $or: orConditions
     })
     // 🚀 SELECT: Explicitly pulls only what's needed for the NoteCard
     .select('title university course subject year rating numReviews downloadCount uploadDate fileType fileName isFeatured fileKey thumbnailKey')
     .populate('user', 'name avatar role')
     .limit(4)
+    // 🚀 Sort by best performing notes first among the matches
     .sort({ rating: -1, downloadCount: -1 })
     .lean();
 
+    // 5. Serialize safely for the Client Component
     return relatedNotes.map(n => ({
       ...n,
       _id: n._id.toString(),
