@@ -23,10 +23,11 @@ export async function getHomeData() {
       Note.aggregate([{ $group: { _id: null, total: { $sum: "$downloadCount" } } }]),
 
       // 2. Fetch Top Contributors
-      User.find({ noteCount: { $gt: 0 } })
-        .sort({ noteCount: -1 })
+      // 🚀 THE FIX: Added blogCount to .select() and allowed users with either notes OR blogs
+      User.find({ $or: [{ noteCount: { $gt: 0 } }, { blogCount: { $gt: 0 } }] })
+        .sort({ noteCount: -1, blogCount: -1 }) // Sorts by notes first, then blogs
         .limit(5)
-        .select("name avatar image role noteCount")
+        .select("name avatar image role noteCount blogCount") // <--- Fix is here
         .lean(),
 
       // 3. Fetch Featured Blogs (Latest 3)
@@ -49,7 +50,9 @@ export async function getHomeData() {
       // Serialize Contributors
       contributors: contributors.map(c => ({ 
           ...c, 
-          _id: c._id.toString() 
+          _id: c._id.toString(),
+          noteCount: c.noteCount || 0,
+          blogCount: c.blogCount || 0 // 🚀 Ensures undefined doesn't break UI
       })),
       
       // Serialize Blogs strictly for Client Components

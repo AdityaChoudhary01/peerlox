@@ -10,7 +10,8 @@ import NoteCard from "@/components/notes/NoteCard";
 import BlogCard from "@/components/blog/BlogCard"; 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, Users, FileText, Download, Trophy, Sparkles, Flame } from "lucide-react";
+// 🚀 FIXED: Changed PenNib to PenTool for lucide-react
+import { ArrowRight, Users, FileText, Download, Trophy, Sparkles, Flame, PenTool } from "lucide-react";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.stuhive.in";
 
@@ -72,11 +73,9 @@ export default async function HomePage() {
             <div className="p-3 sm:p-5 bg-cyan-500/10 rounded-xl sm:rounded-2xl text-cyan-400 mb-2 sm:mb-6 shadow-[0_0_30px_rgba(34,211,238,0.15)] group-hover:-translate-y-1">
               <FileText className="w-5 h-5 sm:w-8 sm:h-8" aria-hidden="true" />
             </div>
-            {/* FIXED: Changed from h3 to div to fix sequential heading order accessibility error */}
             <div className="text-2xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-white/50 drop-shadow-lg">
               {stats?.totalNotes?.toLocaleString() || 0}
             </div>
-            {/* FIXED: Increased opacity from /80 to full for better contrast */}
             <p className="text-[9px] sm:text-[13px] font-bold text-cyan-400 uppercase tracking-[0.1em] sm:tracking-[0.2em] mt-1 sm:mt-2 text-center">Total Notes</p>
           </div>
           
@@ -143,7 +142,7 @@ export default async function HomePage() {
             <Link 
               href="/search" 
               title="Browse all materials"
-              aria-label="Explore all recent academic materials" // FIXED: Added ARIA label
+              aria-label="Explore all recent academic materials" 
               className="group relative flex items-center justify-center gap-2 sm:gap-3 bg-white hover:bg-gray-100 text-black h-10 sm:h-14 px-6 sm:px-10 rounded-full font-black text-xs sm:text-sm uppercase tracking-wider w-full sm:w-auto overflow-hidden transition-all hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_30px_rgba(255,255,255,0.2)]"
             >
               <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-black/5 to-transparent skew-x-12" />
@@ -160,6 +159,7 @@ export default async function HomePage() {
 
       <section className="relative container max-w-7xl py-12 sm:py-24 px-2 sm:px-6 grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-14" aria-label="Hall of fame and stories">
         
+        {/* 🚀 ENHANCED CONTRIBUTOR LEADERBOARD */}
         <aside className="col-span-1 space-y-4 sm:space-y-8">
           <h2 className="text-xl sm:text-3xl font-black text-white uppercase italic flex items-center gap-2 sm:gap-3 pl-1 drop-shadow-md">
             <Flame className="text-orange-500 w-5 h-5 sm:w-8 sm:h-8 drop-shadow-[0_0_10px_rgba(249,115,22,0.8)]" aria-hidden="true" /> Hall of Fame
@@ -167,42 +167,62 @@ export default async function HomePage() {
           <Card className="bg-[#0a0118]/80 backdrop-blur-2xl border-white/10 rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] relative">
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
             
-            <CardContent className="p-2 sm:p-5 space-y-1 sm:space-y-2">
+            <CardContent className="p-3 sm:p-5 space-y-2 sm:space-y-3">
               {contributors && contributors.length > 0 ? contributors.map((user, index) => (
                 <Link 
                   key={user._id} 
                   href={`/profile/${user._id}`} 
                   title={`View ${user.name}'s profile`}
-                  aria-label={`View ${user.name}'s profile, ranked number ${index + 1}`} // FIXED: Added specific ARIA label
-                  className="relative flex items-center justify-between p-2 sm:p-4 rounded-xl sm:rounded-2xl hover:bg-white/[0.04] border border-transparent hover:border-white/5 transition-all duration-300 group overflow-hidden"
+                  aria-label={`View ${user.name}'s profile, ranked number ${index + 1}`} 
+                  className="relative flex items-center justify-between p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 group overflow-hidden"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  {/* Dynamic Hover Glow based on Rank */}
+                  <div className={`absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500 bg-gradient-to-r 
+                    ${index === 0 ? 'from-yellow-500/40' : 
+                      index === 1 ? 'from-slate-400/40' : 
+                      index === 2 ? 'from-amber-600/40' : 
+                      'from-cyan-500/20'} via-transparent to-transparent`} 
+                  />
                   
-                  <div className="relative flex items-center gap-2 sm:gap-4 z-10">
-                    <span className={`text-base sm:text-xl font-black w-5 sm:w-6 text-center
-                      ${index === 0 ? "text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]" : 
-                        index === 1 ? "text-slate-300 drop-shadow-[0_0_8px_rgba(203,213,225,0.8)]" : 
-                        index === 2 ? "text-amber-600 drop-shadow-[0_0_8px_rgba(217,119,6,0.8)]" : 
-                        "text-gray-400 group-hover:text-gray-200 transition-colors"}`} /* FIXED CONTRAST */
+                  <div className="relative flex items-center gap-3 sm:gap-4 z-10 flex-1 min-w-0">
+                    <span className={`text-lg sm:text-2xl font-black w-6 sm:w-8 text-center shrink-0
+                      ${index === 0 ? "text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.8)]" : 
+                        index === 1 ? "text-slate-300 drop-shadow-[0_0_10px_rgba(203,213,225,0.8)]" : 
+                        index === 2 ? "text-amber-600 drop-shadow-[0_0_10px_rgba(217,119,6,0.8)]" : 
+                        "text-gray-500 group-hover:text-gray-300 transition-colors"}`}
                     >
                       #{index + 1}
                     </span>
 
-                    <Avatar className={`w-8 h-8 sm:w-12 sm:h-12 border-2 shrink-0 ${index === 0 ? "border-yellow-400" : index === 1 ? "border-slate-300" : index === 2 ? "border-amber-600" : "border-white/20"}`}>
+                    <Avatar className={`w-10 h-10 sm:w-12 sm:h-12 border-2 shrink-0 ${index === 0 ? "border-yellow-400" : index === 1 ? "border-slate-300" : index === 2 ? "border-amber-600" : "border-white/20 group-hover:border-cyan-400/50 transition-colors"}`}>
                       <AvatarImage src={user.avatar || user.image} referrerPolicy="no-referrer" alt={`${user.name}'s Avatar`} />
                       <AvatarFallback className="text-xs bg-white/10">{user.name?.charAt(0)}</AvatarFallback>
                     </Avatar>
 
-                    <div className="min-w-0">
-                      <p className="font-bold text-xs sm:text-base text-white truncate group-hover:text-cyan-400 transition-colors">{user.name}</p>
-                      {/* FIXED CONTRAST */}
-                      <p className="text-[8px] sm:text-[11px] text-gray-400 uppercase tracking-[0.1em] sm:tracking-[0.15em] font-bold">{user.role || 'Top Scholar'}</p>
+                    <div className="min-w-0 flex-1 pr-2">
+                      <p className="font-bold text-sm sm:text-base text-white truncate group-hover:text-cyan-400 transition-colors">{user.name}</p>
+                      <p className="text-[9px] sm:text-[11px] text-gray-400 uppercase tracking-[0.15em] font-bold truncate mt-0.5">{user.role || 'Top Scholar'}</p>
                     </div>
                   </div>
                   
-                  <div className="relative z-10 text-right shrink-0 bg-white/5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl border border-white/5 group-hover:border-white/10 transition-colors">
-                    <p className="font-black text-white text-xs sm:text-base">{user.noteCount}</p>
-                    <p className="text-[6px] sm:text-[9px] text-cyan-400 uppercase tracking-widest font-black">Uploads</p>
+                  {/* 🚀 Dual Stat Blocks for Notes & Blogs */}
+                  <div className="relative z-10 flex items-center gap-1.5 sm:gap-2 shrink-0">
+                    <div className="flex flex-col items-center justify-center bg-black/40 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg sm:rounded-xl border border-white/5 group-hover:bg-cyan-500/10 group-hover:border-cyan-500/30 transition-colors duration-300 w-12 sm:w-14">
+                      <p className="font-black text-white text-xs sm:text-sm leading-none">{user.noteCount || 0}</p>
+                      <div className="flex items-center gap-1 mt-1">
+                        <FileText className="w-2 h-2 text-cyan-400" />
+                        <span className="text-[6px] sm:text-[8px] text-cyan-400 uppercase tracking-widest font-bold leading-none">Notes</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center bg-black/40 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg sm:rounded-xl border border-white/5 group-hover:bg-purple-500/10 group-hover:border-purple-500/30 transition-colors duration-300 w-12 sm:w-14">
+                      <p className="font-black text-white text-xs sm:text-sm leading-none">{user.blogCount || 0}</p>
+                      <div className="flex items-center gap-1 mt-1">
+                        {/* 🚀 FIXED: PenTool used here */}
+                        <PenTool className="w-2 h-2 text-purple-400" />
+                        <span className="text-[6px] sm:text-[8px] text-purple-400 uppercase tracking-widest font-bold leading-none">Blogs</span>
+                      </div>
+                    </div>
                   </div>
                 </Link>
               )) : (
@@ -223,7 +243,7 @@ export default async function HomePage() {
             <Link 
               href="/blogs" 
               title="Read all student blogs" 
-              aria-label="Read all student peer stories and blogs" // FIXED: Added ARIA label
+              aria-label="Read all student peer stories and blogs" 
               className="group text-[9px] sm:text-[12px] font-black uppercase tracking-widest text-purple-400 hover:text-white flex items-center gap-1 sm:gap-2 transition-colors bg-purple-500/10 hover:bg-purple-500/20 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border border-purple-500/20"
             >
               Read All <ArrowRight size={10} className="sm:w-3 sm:h-3 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
