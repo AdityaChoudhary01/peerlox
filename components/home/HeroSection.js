@@ -11,7 +11,7 @@ export default function HeroSection() {
   const activities = useMemo(() => ([
     { user: 'Aditya', action: 'uploaded React Notes', icon: <FaBolt aria-hidden="true" className="text-amber-400" /> },
     { user: 'Sneha', action: 'shared DBMS PDF', icon: <FaStar aria-hidden="true" className="text-cyan-400" /> },
-    { user: 'Rahul', action: 'joined PeerNotez', icon: <FaRocket aria-hidden="true" className="text-purple-400" /> }
+    { user: 'Rahul', action: 'joined StuHive', icon: <FaRocket aria-hidden="true" className="text-purple-400" /> }
   ]), []);
 
   // Handle the smooth fade transition for the live ticker
@@ -59,7 +59,7 @@ export default function HeroSection() {
           Master Your Coursework <br className="hidden sm:block" />
           {/* FIXED PERFORMANCE: Removed non-composited animate-text-gradient to save mobile CPU */}
           <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-indigo-400 to-purple-500 pb-2 inline-block">
-              with PeerNotez
+              with StuHive
           </span>
         </h1>
 
