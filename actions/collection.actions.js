@@ -174,7 +174,9 @@ export async function updateCollection(collectionId, data, userId) {
         }
     }
 
+    // 🚀 CACHE BUSTING: Ensures main archive page updates instantly to prevent 404s
     revalidatePath('/profile');
+    revalidatePath('/shared-collections'); 
     revalidatePath(`/collections/${collectionId}`);
     if (collection.slug) revalidatePath(`/shared-collections/${collection.slug}`);
     
@@ -239,8 +241,11 @@ export async function addNoteToCollection(collectionId, noteId, userId) {
         await pingIndexNow(url);
     }
 
+    // 🚀 CACHE BUSTING: Updates note count on the main page
     revalidatePath('/profile');
+    revalidatePath('/shared-collections'); 
     if (collection.slug) revalidatePath(`/shared-collections/${collection.slug}`);
+    
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
@@ -268,8 +273,11 @@ export async function removeNoteFromCollection(collectionId, noteId, userId) {
         await pingIndexNow(url);
     }
 
+    // 🚀 CACHE BUSTING: Updates note count on the main page
     revalidatePath('/profile');
+    revalidatePath('/shared-collections'); 
     if (collection.slug) revalidatePath(`/shared-collections/${collection.slug}`);
+    
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
