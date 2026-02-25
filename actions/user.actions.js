@@ -95,7 +95,7 @@ export async function updateUserAvatar(userId, avatarUrl, avatarKey) {
 }
 
 /**
- * UPDATE USER BIO ONLY (🚀 NEW: For SEO and Profile enrichment)
+ * UPDATE USER BIO ONLY
  */
 export async function updateUserBio(userId, newBio) {
   try {
@@ -176,6 +176,26 @@ export async function updateProfile(userId, data) {
     return { success: false, error: error.message };
   }
 }
+/**
+ * 🚀 GET FOLLOWING USERS
+ * Returns the list of users the current user is following
+ */
+export async function getFollowingUsers(userId) {
+  await connectDB();
+  try {
+    const user = await User.findById(userId)
+      .populate('following', 'name avatar role bio') // Fetch details of followed users
+      .select('following')
+      .lean();
+
+    if (!user || !user.following) return [];
+
+    return JSON.parse(JSON.stringify(user.following));
+  } catch (error) {
+    console.error("Error fetching following list:", error);
+    return [];
+  }
+}
 
 /**
  * TOGGLE FOLLOW
@@ -190,12 +210,18 @@ export async function toggleFollow(currentUserId, targetUserId) {
 
     if (!currentUser || !targetUser) return { success: false, error: "User not found" };
 
-    const isFollowing = currentUser.following.includes(targetUserId);
+    // 🚀 FIX: Convert both to strings explicitly to ensure bulletproof comparison
+    const currentIdStr = currentUserId.toString();
+    const targetIdStr = targetUserId.toString();
+
+    const isFollowing = currentUser.following.some(id => id.toString() === targetIdStr);
 
     if (isFollowing) {
-      currentUser.following = currentUser.following.filter(id => id.toString() !== targetUserId);
-      targetUser.followers = targetUser.followers.filter(id => id.toString() !== currentUserId);
+      // Unfollow logic
+      currentUser.following = currentUser.following.filter(id => id.toString() !== targetIdStr);
+      targetUser.followers = targetUser.followers.filter(id => id.toString() !== currentIdStr);
     } else {
+      // Follow logic
       currentUser.following.push(targetUserId);
       targetUser.followers.push(currentUserId);
     }
@@ -203,10 +229,15 @@ export async function toggleFollow(currentUserId, targetUserId) {
     await currentUser.save();
     await targetUser.save();
 
-    revalidatePath(`/profile/${targetUserId}`);
+    // 🚀 FORCE CACHE BUSTING GLOBALLY FOR THESE PAGES
+    revalidatePath(`/profile/${targetUserId}`, 'page');
+    revalidatePath('/feed', 'page');
+    revalidatePath('/profile', 'page'); 
+    
     return { success: true, isFollowing: !isFollowing };
 
   } catch (error) {
+    console.error("Toggle Follow Error:", error);
     return { success: false, error: error.message };
   }
 }

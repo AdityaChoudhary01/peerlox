@@ -1,8 +1,11 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getUserFeed } from "@/actions/user.actions";
-import FeedView from "@/components/feed/FeedView"; // Client Component
+import { getUserFeed, getFollowingUsers } from "@/actions/user.actions"; 
+import FeedView from "@/components/feed/FeedView"; 
+
+// 🚀 CRITICAL FOR FEED: Do not cache this page!
+export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: "My Feed | StuHive",
@@ -15,19 +18,25 @@ export default async function FeedPage() {
     redirect("/login");
   }
 
-  // Fetch feed (Notes + Blogs combined)
-  const feedContent = await getUserFeed(session.user.id);
+  const [feedContent, followingList] = await Promise.all([
+    getUserFeed(session.user.id),
+    getFollowingUsers(session.user.id)
+  ]);
 
   return (
-    <div className="container py-8 max-w-5xl min-h-screen">
-      <div className="mb-8 text-center">
-         <h1 className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-600 mb-2">
+    <div className="container py-8 md:py-16 max-w-6xl min-h-screen">
+      <div className="mb-12 text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
+         <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 mb-4 tracking-tight">
             Your Daily Stream
          </h1>
-         <p className="text-muted-foreground">Fresh updates from authors you follow.</p>
+         <p className="text-gray-400 text-lg">Fresh updates from authors you follow.</p>
       </div>
       
-      <FeedView initialContent={feedContent} />
+      <FeedView 
+        initialContent={feedContent} 
+        initialFollowing={followingList} 
+        currentUserId={session.user.id} 
+      />
     </div>
   );
 }

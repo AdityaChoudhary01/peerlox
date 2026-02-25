@@ -26,6 +26,7 @@ import { formatDate } from "@/lib/utils";
 import { generateReadUrl } from "@/lib/r2";
 
 const APP_URL = process.env.NEXTAUTH_URL || "https://www.stuhive.in";
+const R2_PUBLIC_URL = process.env.NEXT_PUBLIC_R2_PUBLIC_URL || "";
 
 // 🚀 1. ULTRA HYPER SEO METADATA
 export async function generateMetadata({ params }) {
@@ -34,7 +35,13 @@ export async function generateMetadata({ params }) {
   const note = await getNoteById(resolvedParams.id);
   if (!note) return { title: "Note Not Found | StuHive", robots: "noindex, nofollow" };
 
-  const ogImage = note.thumbnailUrl || `${APP_URL}/default-note-og.jpg`;
+  // 🚀 CRITICAL FIX FOR WHATSAPP/SOCIAL SHARING THUMBNAILS:
+  // Dynamically constructs the full public URL from the Cloudflare R2 bucket key.
+  const ogImage = note.thumbnailKey 
+    ? `${R2_PUBLIC_URL}/${note.thumbnailKey}` 
+    : (note.fileType?.startsWith("image/") && note.fileKey 
+        ? `${R2_PUBLIC_URL}/${note.fileKey}` 
+        : `${APP_URL}/og-shared-archives.png`); // Fallback if no thumbnail exists
   
   // Dynamic Long-Tail Keyword Generation Matrix
   const dynamicKeywords = [
@@ -46,9 +53,12 @@ export async function generateMetadata({ params }) {
     "free study guide", "StuHive documents"
   ].filter(Boolean);
 
+  const title = `${note.title} | ${note.subject} Notes - ${note.university} | StuHive`;
+  const description = `Free PDF Download: ${note.title} for ${note.course} at ${note.university}. Comprehensive study material, lecture notes, and exam prep for ${note.subject}. ${note.description?.substring(0, 80)}...`;
+
   return {
-    title: `${note.title} | ${note.subject} Notes - ${note.university} | StuHive`,
-    description: `Free PDF Download: ${note.title} for ${note.course} at ${note.university}. Comprehensive study material, lecture notes, and exam prep for ${note.subject}. ${note.description?.substring(0, 80)}...`,
+    title,
+    description,
     keywords: dynamicKeywords,
     authors: [{ name: note.user?.name || "StuHive Contributor", url: `${APP_URL}/profile/${note.user?._id}` }],
     creator: note.user?.name || "StuHive Contributor",
@@ -71,8 +81,8 @@ export async function generateMetadata({ params }) {
       },
     },
     openGraph: {
-      title: `${note.title} - ${note.subject} Notes (${note.university})`,
-      description: `Access high-quality ${note.course} study materials. Read and download ${note.title} for free on StuHive.`,
+      title,
+      description,
       url: `${APP_URL}/notes/${resolvedParams.id}`,
       siteName: "StuHive",
       type: "article",
@@ -82,18 +92,19 @@ export async function generateMetadata({ params }) {
       tags: dynamicKeywords.slice(0, 6),
       images: [
         {
-          url: ogImage,
+          url: ogImage, // 🚀 Directly passes the R2 URL to Facebook/WhatsApp parsers
           width: 1200,
           height: 630,
           alt: `${note.title} - ${note.course} Study Notes`,
+          type: "image/jpeg" // Explicitly declare image type to force older scrapers to read it
         }
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${note.title} | ${note.subject} Notes`,
-      description: `Download free ${note.course} notes for ${note.university}.`,
-      images: [ogImage],
+      title,
+      description,
+      images: [ogImage], // 🚀 Same fix for Twitter/X previews
     }
   };
 }
@@ -125,7 +136,10 @@ export default async function ViewNotePage({ params }) {
       : null;
 
   // 🚀 2. HYPER-OPTIMIZED MULTI-SCHEMA JSON-LD INJECTION
-  // ✅ FIXED: Breadcrumb schema updated to reflect the new global-search structure
+  const ogImage = note.thumbnailKey 
+    ? `${R2_PUBLIC_URL}/${note.thumbnailKey}` 
+    : `${APP_URL}/og-shared-archives.png`;
+
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -147,6 +161,7 @@ export default async function ViewNotePage({ params }) {
     "educationalLevel": "University",
     "teaches": note.subject,
     "courseCode": note.course,
+    "image": ogImage, // 🚀 Explicitly maps thumbnail into schema for rich results
     "isAccessibleForFree": true, // 🚀 SEO GOLD: Tells Google this is free educational material
     "provider": {
       "@type": "CollegeOrUniversity",

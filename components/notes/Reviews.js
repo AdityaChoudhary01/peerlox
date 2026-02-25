@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
+import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input"; 
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { addReview, deleteReview } from "@/actions/note.actions";
-import { Trash2, MessageSquare, Star, Reply, Loader2 } from "lucide-react"; 
+import { Trash2, MessageSquare, Star, Reply, Loader2, ShieldCheck } from "lucide-react"; 
 import StarRating from "@/components/common/StarRating";
 import { formatDate } from "@/lib/utils";
 
@@ -130,15 +132,42 @@ export default function NoteReviews({ noteId, initialReviews = [] }) {
           return (
             <div key={review._id} className="space-y-4">
               <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl group relative">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <Avatar className="w-9 h-9 border border-white/10">
-                      <AvatarImage src={getAvatarUrl(review.user)} />
-                      <AvatarFallback>?</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h4 className="text-sm font-black text-white">{review.user?.name || "Deleted User"}</h4>
-                      <p className="text-[10px] text-white/30 font-bold uppercase">{formatDate(review.createdAt)}</p>
+                    {/* 🚀 Clickable Avatar */}
+                    {review.user?._id ? (
+                      <Link href={`/profile/${review.user._id}`} className="shrink-0">
+                        <Avatar className="w-10 h-10 border border-transparent hover:border-cyan-400 transition-all cursor-pointer">
+                          <AvatarImage src={getAvatarUrl(review.user)} alt={review.user.name} />
+                          <AvatarFallback>{review.user.name?.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                      </Link>
+                    ) : (
+                      <Avatar className="w-10 h-10 opacity-50 shrink-0 border border-white/10">
+                        <AvatarImage src={getAvatarUrl(null)} />
+                        <AvatarFallback>?</AvatarFallback>
+                      </Avatar>
+                    )}
+
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {/* 🚀 Clickable Name */}
+                        {review.user?._id ? (
+                          <Link href={`/profile/${review.user._id}`} className="text-sm font-black text-white hover:text-cyan-400 transition-colors truncate max-w-[150px] sm:max-w-xs">
+                            {review.user.name}
+                          </Link>
+                        ) : (
+                          <span className="text-sm font-black text-white/50">Deleted User</span>
+                        )}
+
+                        {/* 🚀 Admin Badge */}
+                        {review.user?.role === 'admin' && (
+                          <Badge variant="outline" className="h-4 px-1.5 py-0 text-[8px] font-black uppercase tracking-widest bg-cyan-500/10 text-cyan-400 border-cyan-500/30 flex items-center gap-1">
+                            <ShieldCheck className="w-2.5 h-2.5" /> Admin
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-white/30 font-bold uppercase mt-0.5">{formatDate(review.createdAt)}</p>
                     </div>
                   </div>
                   <StarRating rating={review.rating} size="xs" />
@@ -185,17 +214,43 @@ export default function NoteReviews({ noteId, initialReviews = [] }) {
 
               {/* Threaded Replies */}
               {childReplies.length > 0 && (
-                <div className="ml-10 space-y-3 border-l-2 border-white/5 pl-6">
+                <div className="ml-6 sm:ml-10 space-y-3 border-l-2 border-white/5 pl-4 sm:pl-6">
                   {childReplies.map(reply => (
                     <div key={reply._id} className="bg-white/5 p-4 rounded-xl border border-white/5 relative group/reply">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                            <Avatar className="w-6 h-6">
-                                <AvatarImage src={getAvatarUrl(reply.user)} />
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {/* 🚀 Clickable Avatar (Reply) */}
+                            {reply.user?._id ? (
+                              <Link href={`/profile/${reply.user._id}`} className="shrink-0">
+                                <Avatar className="w-6 h-6 border border-transparent hover:border-cyan-400 transition-all cursor-pointer">
+                                  <AvatarImage src={getAvatarUrl(reply.user)} alt={reply.user.name} />
+                                  <AvatarFallback>{reply.user.name?.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                              </Link>
+                            ) : (
+                              <Avatar className="w-6 h-6 opacity-50 shrink-0">
+                                <AvatarImage src={getAvatarUrl(null)} />
                                 <AvatarFallback>?</AvatarFallback>
-                            </Avatar>
-                            <span className="text-xs font-bold text-white/80">{reply.user?.name || "Deleted User"}</span>
-                            <span className="text-[9px] text-white/20 uppercase font-medium">{formatDate(reply.createdAt)}</span>
+                              </Avatar>
+                            )}
+
+                            {/* 🚀 Clickable Name (Reply) */}
+                            {reply.user?._id ? (
+                              <Link href={`/profile/${reply.user._id}`} className="text-xs font-bold text-white/80 hover:text-cyan-400 transition-colors truncate max-w-[120px] sm:max-w-[200px]">
+                                {reply.user.name}
+                              </Link>
+                            ) : (
+                              <span className="text-xs font-bold text-white/50">Deleted User</span>
+                            )}
+
+                            {/* 🚀 Admin Badge (Reply) */}
+                            {reply.user?.role === 'admin' && (
+                              <Badge variant="outline" className="h-3.5 px-1 py-0 text-[7px] font-black uppercase tracking-widest bg-cyan-500/10 text-cyan-400 border-cyan-500/30 flex items-center gap-1">
+                                <ShieldCheck className="w-2 h-2" /> Admin
+                              </Badge>
+                            )}
+
+                            <span className="text-[9px] text-white/20 uppercase font-medium ml-1">{formatDate(reply.createdAt)}</span>
                         </div>
                         {(session?.user?.id === (reply.user?._id || reply.user) || session?.user?.role === 'admin') && (
                           <button onClick={() => handleDelete(reply._id)} className="text-red-500/40 hover:text-red-500 transition-opacity opacity-0 group-hover/reply:opacity-100">
@@ -203,10 +258,41 @@ export default function NoteReviews({ noteId, initialReviews = [] }) {
                           </button>
                         )}
                       </div>
+
                       <p className="text-sm text-white/60">
-                         <span className="text-cyan-400 font-bold text-xs mr-1">@{review.user?.name || 'User'}</span>
-                         {reply.comment}
+                        {/* 🚀 SMART EXACT-NAME MATCHING ALGORITHM TO PREVENT DUPLICATES */}
+                        {(() => {
+                            const threadNames = [review.user?.name, ...childReplies.map(r => r.user?.name)].filter(Boolean);
+                            const uniqueNames = [...new Set(threadNames)].sort((a, b) => b.length - a.length);
+                            
+                            for (const name of uniqueNames) {
+                                const mention = `@${name} `;
+                                if (reply.comment.startsWith(mention)) {
+                                    return (
+                                        <>
+                                            <span className="text-cyan-400 font-bold text-xs mr-1">@{name}</span>
+                                            {reply.comment.substring(mention.length)}
+                                        </>
+                                    );
+                                }
+                            }
+
+                            if (reply.comment.startsWith('@')) {
+                                const spaceIdx = reply.comment.indexOf(' ');
+                                if (spaceIdx > 0) {
+                                    return (
+                                        <>
+                                            <span className="text-cyan-400 font-bold text-xs mr-1">{reply.comment.substring(0, spaceIdx)}</span>
+                                            {reply.comment.substring(spaceIdx + 1)}
+                                        </>
+                                    );
+                                }
+                            }
+
+                            return reply.comment;
+                        })()}
                       </p>
+
                       <button 
                         onClick={() => {
                             setReplyingTo(review._id); 
