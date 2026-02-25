@@ -113,7 +113,7 @@ export default async function BrowseCollectionsPage({ searchParams }) {
       <div className="container relative z-10 max-w-6xl py-16 md:py-24 px-4 sm:px-6 mx-auto">
         
         {/* 🚀 REFINED PROFESSIONAL HEADER */}
-        <header className="mb-16 md:mb-24 max-w-3xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <header className="mb-12 md:mb-20 max-w-3xl animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-cyan-400 mb-6 shadow-sm">
             <Library size={14} aria-hidden="true" />
             <span className="text-xs font-bold tracking-wide">Community Archives</span>
@@ -151,7 +151,7 @@ export default async function BrowseCollectionsPage({ searchParams }) {
         <section aria-labelledby="collections-heading">
           <h2 id="collections-heading" className="sr-only">Verified University Note Bundles</h2>
           
-          {/* 🚀 DELEGATE GRID AND LOAD MORE TO CLIENT COMPONENT */}
+          {/* 🚀 CLIENT COMPONENT: Handles the Tabs & Grid */}
           <CollectionGrid 
             initialCollections={collections} 
             totalCount={totalCount} 

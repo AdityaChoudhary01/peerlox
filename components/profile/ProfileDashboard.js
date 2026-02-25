@@ -5,17 +5,18 @@ import Link from "next/link";
 import { FaUpload, FaBookmark, FaList, FaPenNib, FaEdit, FaRss, FaPlus, FaGlobe, FaLock, FaShareAlt } from "react-icons/fa";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea"; // 🚀 Added Textarea
 import NoteCard from "@/components/notes/NoteCard";
 import BlogCard from "@/components/blog/BlogCard";
 import RoleBadge from "@/components/common/RoleBadge";
 import dynamic from 'next/dynamic'; 
 import { updateProfile, updateUserAvatar } from "@/actions/user.actions";
-import { deleteCollection, renameCollection, createCollection, updateCollection } from "@/actions/collection.actions"; 
+import { deleteCollection, createCollection, updateCollection } from "@/actions/collection.actions"; 
 import { deleteBlog } from "@/actions/blog.actions";
 import { deleteNote } from "@/actions/note.actions"; 
 import { useToast } from '@/hooks/use-toast';
 import { useSession } from "next-auth/react";
-import { Trash2, Loader2, MoreVertical, Search } from "lucide-react"; 
+import { Trash2, Loader2, MoreVertical, Search, Check } from "lucide-react"; 
 import ProfileImageUpload from "@/components/profile/ProfileImageUpload";
 import EditBio from "@/components/profile/EditBio"; 
 import {
@@ -43,8 +44,13 @@ export default function ProfileDashboard({ user, initialMyNotes, initialSavedNot
   const [editingColId, setEditingColId] = useState(null);
   const [editColName, setEditColName] = useState("");
   const [editColDescription, setEditColDescription] = useState(""); 
+  
+  // 🚀 EXPANDED: Create Collection State
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
-  const [newCollectionName, setNewCollectionName] = useState("");
+  const [newColName, setNewColName] = useState("");
+  const [newColDesc, setNewColDesc] = useState("");
+  const [newColVisibility, setNewColVisibility] = useState("private");
+  const [isCreatingLoader, setIsCreatingLoader] = useState(false);
 
   const [optimisticAvatar, setOptimisticAvatar] = useState(null); 
   
@@ -88,18 +94,41 @@ export default function ProfileDashboard({ user, initialMyNotes, initialSavedNot
     setIsDeletingNoteId(null);
   };
 
+  // 🚀 UPDATED: Create Collection Logic
   const handleCreateCollection = async (e) => {
     e.preventDefault();
-    if (!newCollectionName.trim()) return;
-    const res = await createCollection(newCollectionName, user._id);
+    if (!newColName.trim()) return;
+    
+    setIsCreatingLoader(true);
+    
+    // 1. Create Base Collection
+    const res = await createCollection(newColName, user._id);
+    
     if (res.success) {
-      setCollections([res.collection, ...collections]);
-      setNewCollectionName("");
+      // 2. Apply Description and Visibility updates immediately
+      let finalCollection = res.collection;
+      if (newColDesc.trim() || newColVisibility === 'public') {
+          const updateRes = await updateCollection(
+              res.collection._id, 
+              { description: newColDesc, visibility: newColVisibility }, 
+              user._id
+          );
+          if (updateRes.success) finalCollection = updateRes.collection;
+      }
+
+      setCollections([finalCollection, ...collections]);
+      
+      // Reset State
+      setNewColName("");
+      setNewColDesc("");
+      setNewColVisibility("private");
       setIsCreatingCollection(false);
-      toast({ title: "Collection Created" });
+      toast({ title: "Collection Created", description: "Your new bundle is ready." });
     } else {
       toast({ title: "Error", description: res.error, variant: "destructive" });
     }
+    
+    setIsCreatingLoader(false);
   };
 
   const handleDeleteCollection = async (id) => {
@@ -147,7 +176,6 @@ export default function ProfileDashboard({ user, initialMyNotes, initialSavedNot
     }
   };
 
-  // 🚀 NEW: Native Share functionality for collections
   const handleShareCollection = async (col) => {
     const url = `https://www.stuhive.in/shared-collections/${col.slug}`;
     const shareData = {
@@ -213,7 +241,7 @@ export default function ProfileDashboard({ user, initialMyNotes, initialSavedNot
             </div>
 
             <Link href="/feed" className="relative z-10">
-                <Button className="rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 border-0 shadow-lg hover:shadow-xl transition-all">
+                <Button className="rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 border-0 shadow-lg hover:shadow-xl transition-all font-bold">
                     <FaRss className="mr-2" /> My Personalized Feed
                 </Button>
             </Link>
@@ -311,68 +339,128 @@ export default function ProfileDashboard({ user, initialMyNotes, initialSavedNot
 
             {activeTab === 'collections' && (
                 <div className="max-w-3xl mx-auto space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-card rounded-xl border border-primary/20 shadow-sm mb-6">
+                    
+                    {/* 🚀 UPGRADED: Collection Creation Form */}
+                    <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl shadow-sm mb-8">
                         {isCreatingCollection ? (
-                          <form onSubmit={handleCreateCollection} className="flex gap-2 w-full">
-                            <Input placeholder="New collection name..." value={newCollectionName} onChange={(e) => setNewCollectionName(e.target.value)} autoFocus />
-                            <Button type="submit">Create</Button>
-                            <Button variant="ghost" onClick={() => setIsCreatingCollection(false)}>Cancel</Button>
+                          <form onSubmit={handleCreateCollection} className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-cyan-400">Bundle Name</label>
+                                <Input 
+                                    placeholder="e.g. Engineering Mathematics II" 
+                                    value={newColName} 
+                                    onChange={(e) => setNewColName(e.target.value)} 
+                                    className="bg-black/40 border-white/10 focus-visible:ring-cyan-500"
+                                    autoFocus 
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Description (Optional)</label>
+                                <Textarea 
+                                    placeholder="What is this bundle about?" 
+                                    value={newColDesc}
+                                    onChange={(e) => setNewColDesc(e.target.value)}
+                                    className="bg-black/40 border-white/10 focus-visible:ring-cyan-500 resize-none min-h-[80px] text-sm"
+                                    maxLength={200}
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Visibility</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Button 
+                                        type="button" 
+                                        variant={newColVisibility === 'private' ? 'default' : 'outline'}
+                                        className={newColVisibility === 'private' ? 'bg-white text-black font-bold' : 'border-white/10 text-gray-400 hover:text-white'}
+                                        onClick={() => setNewColVisibility('private')}
+                                    >
+                                        <FaLock className="w-3.5 h-3.5 mr-2" /> Private
+                                    </Button>
+                                    <Button 
+                                        type="button" 
+                                        variant={newColVisibility === 'public' ? 'default' : 'outline'}
+                                        className={newColVisibility === 'public' ? 'bg-cyan-500 text-black font-bold hover:bg-cyan-400' : 'border-white/10 text-gray-400 hover:text-white'}
+                                        onClick={() => setNewColVisibility('public')}
+                                    >
+                                        <FaGlobe className="w-3.5 h-3.5 mr-2" /> Public
+                                    </Button>
+                                </div>
+                                {newColVisibility === 'public' && (
+                                    <p className="text-[10px] text-cyan-400 mt-1 italic">Public collections are indexed by Google and can be shared.</p>
+                                )}
+                            </div>
+
+                            <div className="flex gap-2 pt-2">
+                                <Button type="button" variant="ghost" className="flex-1 text-gray-400 hover:text-white" onClick={() => setIsCreatingCollection(false)}>Cancel</Button>
+                                <Button type="submit" className="flex-1 bg-cyan-500 text-black font-bold hover:bg-cyan-400" disabled={isCreatingLoader || !newColName.trim()}>
+                                    {isCreatingLoader ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : <Check className="w-4 h-4 mr-2" />} Create Bundle
+                                </Button>
+                            </div>
                           </form>
                         ) : (
-                          <Button variant="outline" className="w-full border-dashed" onClick={() => setIsCreatingCollection(true)}>
+                          <Button 
+                            variant="outline" 
+                            className="w-full border-dashed border-white/20 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300 py-6" 
+                            onClick={() => setIsCreatingCollection(true)}
+                          >
                             <FaPlus className="mr-2" /> Create New Collection
                           </Button>
                         )}
                     </div>
+
+                    {/* Collection List */}
                     {collections.map(col => (
-                        <div key={col._id} className="flex flex-col p-4 bg-secondary/5 rounded-xl border hover:bg-secondary/10 transition gap-3">
+                        <div key={col._id} className="flex flex-col p-4 bg-white/[0.02] border border-white/5 rounded-2xl hover:bg-white/[0.04] hover:border-cyan-500/20 transition-all duration-300 gap-3">
                             {editingColId === col._id ? (
-                                <div className="flex flex-col gap-3 w-full bg-background/50 p-4 rounded-2xl border border-primary/30 animate-in fade-in zoom-in-95">
+                                <div className="flex flex-col gap-3 w-full bg-black/40 p-4 rounded-xl border border-white/10 animate-in fade-in zoom-in-95">
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Bundle Name</label>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-cyan-400 ml-1">Bundle Name</label>
                                         <Input 
                                             value={editColName} 
                                             onChange={(e) => setEditColName(e.target.value)} 
-                                            className="h-10 flex-1" 
+                                            className="h-10 flex-1 bg-black/40 border-white/10 focus-visible:ring-cyan-500" 
                                             placeholder="e.g., Engineering Mathematics II"
                                             autoFocus 
                                         />
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Short Description (SEO)</label>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Short Description (SEO)</label>
                                         <textarea 
                                             value={editColDescription} 
                                             onChange={(e) => setEditColDescription(e.target.value)} 
-                                            className="w-full min-h-[80px] bg-secondary/10 border rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                            className="w-full min-h-[80px] bg-black/40 border border-white/10 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50 resize-none"
                                             placeholder="Describe what's inside this bundle..."
                                             maxLength={200}
                                         />
-                                        <p className="text-[9px] text-right text-muted-foreground">{editColDescription.length}/200</p>
+                                        <p className="text-[9px] text-right text-gray-500">{editColDescription.length}/200</p>
                                     </div>
                                     <div className="flex justify-end gap-2">
-                                        <Button size="sm" variant="ghost" onClick={() => setEditingColId(null)}>Cancel</Button>
-                                        <Button size="sm" onClick={() => handleSaveDetails(col._id)}>Save Changes</Button>
+                                        <Button size="sm" variant="ghost" onClick={() => setEditingColId(null)} className="text-gray-400 hover:text-white">Cancel</Button>
+                                        <Button size="sm" onClick={() => handleSaveDetails(col._id)} className="bg-cyan-500 text-black hover:bg-cyan-400 font-bold">Save Changes</Button>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex items-center justify-between w-full">
-                                    <Link href={`/collections/${col._id}`} className="flex items-center gap-4 flex-1">
-                                        <FaList className="text-primary w-5 h-5" />
-                                        <div>
-                                            <h3 className="font-bold flex items-center gap-2 text-white">
+                                <div className="flex flex-wrap items-center justify-between w-full gap-4">
+                                    <Link href={`/collections/${col._id}`} className="flex items-center gap-4 flex-1 min-w-0">
+                                        <div className="p-3 bg-white/5 rounded-xl">
+                                            <FaList className="text-cyan-400 w-5 h-5" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <h3 className="font-bold flex items-center gap-2 text-white/90 truncate">
                                               {col.name}
-                                              {col.visibility === 'public' ? <FaGlobe className="text-cyan-400 w-3 h-3" /> : <FaLock className="text-muted-foreground w-3 h-3" />}
+                                              {col.visibility === 'public' ? <FaGlobe className="text-cyan-400 w-3 h-3 shrink-0" /> : <FaLock className="text-gray-500 w-3 h-3 shrink-0" />}
                                             </h3>
-                                            <p className="text-xs text-muted-foreground">{col.notes?.length || 0} notes • <span className="capitalize">{col.visibility || 'private'}</span></p>
+                                            <p className="text-xs text-gray-400 mt-0.5">{col.notes?.length || 0} notes • <span className="capitalize">{col.visibility || 'private'}</span></p>
                                         </div>
                                     </Link>
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-1 shrink-0">
                                         <Button 
                                           variant="ghost" 
                                           size="icon" 
                                           title={col.visibility === 'public' ? "Make Private" : "Make Public"}
                                           onClick={() => handleToggleVisibility(col._id, col.visibility)}
-                                          className={col.visibility === 'public' ? "text-cyan-400 hover:bg-cyan-400/10" : "text-muted-foreground"}
+                                          className={col.visibility === 'public' ? "text-cyan-400 hover:bg-cyan-400/10" : "text-gray-500 hover:bg-white/10 hover:text-white"}
                                         >
                                             {col.visibility === 'public' ? <FaGlobe className="w-4 h-4" /> : <FaLock className="w-4 h-4" />}
                                         </Button>
@@ -384,11 +472,11 @@ export default function ProfileDashboard({ user, initialMyNotes, initialSavedNot
                                             setEditColName(col.name); 
                                             setEditColDescription(col.description || ""); 
                                           }} 
-                                          className="text-muted-foreground hover:text-primary"
+                                          className="text-gray-400 hover:text-cyan-400 hover:bg-cyan-400/10"
                                         >
                                             <FaEdit className="w-4 h-4" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteCollection(col._id)} className="text-destructive hover:bg-destructive/10">
+                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteCollection(col._id)} className="text-red-400 hover:bg-red-500/10 hover:text-red-500">
                                             <Trash2 className="w-4 h-4" />
                                         </Button>
                                     </div>
@@ -396,21 +484,26 @@ export default function ProfileDashboard({ user, initialMyNotes, initialSavedNot
                             )}
 
                             {col.visibility === 'public' && col.slug && !editingColId && (
-                              <div className="flex items-center justify-between mt-2 p-2 bg-background/50 rounded-lg border border-white/5">
-                                <span className="text-[10px] text-muted-foreground truncate max-w-[200px] sm:max-w-md">stuhive.in/shared-collections/{col.slug}</span>
-                                {/* 🚀 UPDATED: Uses handleShareCollection to open native prompt */}
+                              <div className="flex items-center justify-between mt-2 p-2 bg-black/30 rounded-lg border border-white/5">
+                                <span className="text-[10px] text-gray-500 truncate max-w-[200px] sm:max-w-md">stuhive.in/shared-collections/{col.slug}</span>
                                 <Button 
                                   variant="ghost" 
                                   size="sm" 
-                                  className="h-6 text-[10px] font-black uppercase text-cyan-400 hover:bg-cyan-400/10"
+                                  className="h-6 text-[10px] font-black uppercase tracking-widest text-cyan-400 hover:bg-cyan-400/10 shrink-0"
                                   onClick={() => handleShareCollection(col)}
                                 >
-                                  <FaShareAlt className="mr-1 w-2.5 h-2.5" /> Share
+                                  <FaShareAlt className="mr-1.5 w-2.5 h-2.5" /> Share
                                 </Button>
                               </div>
                             )}
                         </div>
                     ))}
+                    
+                    {collections.length === 0 && !isCreatingCollection && (
+                         <div className="text-center py-12 text-gray-500 text-sm">
+                             No collections yet. Start organizing your notes!
+                         </div>
+                    )}
                 </div>
             )}
         </div>
@@ -422,7 +515,7 @@ export default function ProfileDashboard({ user, initialMyNotes, initialSavedNot
 
 function TabButton({ active, onClick, children, icon }) {
     return (
-        <Button variant={active ? "default" : "outline"} onClick={onClick} className={`rounded-full transition-all ${active ? "shadow-md scale-105" : "border-transparent bg-secondary/20 hover:bg-secondary/30"}`}>
+        <Button variant={active ? "default" : "outline"} onClick={onClick} className={`rounded-full transition-all border-white/10 ${active ? "bg-cyan-500 text-black font-bold shadow-[0_0_15px_rgba(6,182,212,0.3)] hover:bg-cyan-400" : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"}`}>
             <span className="mr-2">{icon}</span> {children}
         </Button>
     )
@@ -430,8 +523,8 @@ function TabButton({ active, onClick, children, icon }) {
 
 function EmptyState({ msg, action }) {
     return (
-        <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground border-2 border-dashed border-white/10 rounded-3xl gap-4 bg-secondary/5">
-            <p className="text-lg font-medium">{msg}</p>
+        <div className="col-span-full flex flex-col items-center justify-center py-20 text-gray-400 border border-dashed border-white/10 rounded-[2rem] gap-4 bg-white/[0.01]">
+            <p className="text-sm font-medium">{msg}</p>
             {action}
         </div>
     )
