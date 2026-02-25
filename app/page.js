@@ -18,9 +18,11 @@ export const revalidate = 30; // 🚀 ISR Cache at Edge
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.stuhive.in";
 
-// 🚀 ULTRA HYPER SEO METADATA MATRIX
+// 🚀 ULTRA HYPER SEO METADATA MATRIX (app/page.js)
 export const metadata = {
   title: {
+    // 🚀 FIXED: 'absolute' forces Next.js to ignore the "%s | StuHive" template in layout.js
+    // This prevents the duplicate title issue (e.g., "StuHive | Notes | StuHive")
     absolute: "StuHive | Free Academic Notes, Study Materials & Peer Collections", 
   },
   description: "Join a global network of top-tier students. Download free handwritten notes, access curated academic collections, read peer blogs, and ace your university exams.",
@@ -28,18 +30,12 @@ export const metadata = {
     "academic notes", "StuHive", "peer notez", "university study tips", 
     "free PDF notes", "student collaboration", "study material bundles",
     "exam preparation", "college resources", "handwritten lecture notes",
-    "download study guides", "academic community", "BTech notes", "engineering notes"
+    "download study guides", "academic community"
   ],
-  authors: [{ name: "StuHive Organization", url: APP_URL }],
+  authors: [{ name: "StuHive Organization", url: process.env.NEXT_PUBLIC_APP_URL || "https://www.stuhive.in" }],
   creator: "StuHive",
   publisher: "StuHive Academic Network",
   category: "Education",
-  applicationName: "StuHive",
-  appleWebApp: {
-    title: "StuHive",
-    statusBarStyle: "black-translucent",
-    capable: true,
-  },
   formatDetection: { email: false, address: false, telephone: false },
   alternates: {
     canonical: APP_URL,
@@ -59,13 +55,13 @@ export const metadata = {
   openGraph: {
     title: "StuHive | The Global Academic Knowledge Hub",
     description: "Access high-quality study materials, curated note collections, and academic blogs for free.",
-    url: APP_URL, 
+    url: "/", // Next.js auto-resolves this via metadataBase
     siteName: "StuHive",
     type: "website",
     locale: "en_US",
     images: [
       { 
-        url: `${APP_URL}/logo512.png`, 
+        url: "/logo512.png", // Next.js auto-resolves this via metadataBase
         width: 1200,
         height: 630,
         alt: "StuHive - Learn Better Together",
@@ -77,23 +73,23 @@ export const metadata = {
     card: "summary_large_image",
     title: "StuHive | Free Study Materials & Notes",
     description: "Join thousands of students sharing handwritten notes and academic blogs.",
-    images: [`${APP_URL}/logo512.png`],
+    images: ["/logo512.png"],
   }
 };
 
 export default async function HomePage() {
+  // 🚀 PARALLEL DATA FETCHING FOR MAXIMUM SPEED
   const [featuredNotesRes, allNotesRes, homeData, collectionsRes] = await Promise.all([
     getNotes({ limit: 3, sort: 'highestRated' }),
     getNotes({ page: 1, limit: 12 }),
     getHomeData(),
-    getPublicCollections({ page: 1, limit: 3 }) 
+    getPublicCollections({ page: 1, limit: 3 }) // Fetch 3 most recent collections
   ]);
 
   const { stats, contributors, blogs } = homeData;
   const collections = collectionsRes?.collections || [];
-  const featuredNotes = featuredNotesRes?.notes || [];
 
-  // 🚀 FIXED JSON-LD: Removed "Course" from the homepage summary to prevent mutually-exclusive property errors
+  // 🚀 MASSIVE INTERCONNECTED JSON-LD KNOWLEDGE GRAPH
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
@@ -104,7 +100,7 @@ export default async function HomePage() {
         "url": APP_URL,
         "logo": {
           "@type": "ImageObject",
-          "url": `${APP_URL}/logo192.png`
+          "url": `${APP_URL}/logo512.png`
         },
         "description": "A collaborative ecosystem for academic success and free study materials."
       },
@@ -130,35 +126,7 @@ export default async function HomePage() {
         "inLanguage": "en-US",
         "name": "StuHive | Free Academic Notes & Study Materials",
         "isPartOf": { "@id": `${APP_URL}/#website` },
-        "about": { "@id": `${APP_URL}/#organization` },
-        "mainEntity": {
-          "@type": "ItemList",
-          "name": "Featured Academic Resources",
-          "itemListElement": featuredNotes.map((note, index) => ({
-            "@type": "ListItem",
-            "position": index + 1,
-            "item": {
-              "@type": "CreativeWork", // 🚀 FIX: Reverted back to standard CreativeWork to clear the GSC error
-              "name": note.title,
-              "url": `${APP_URL}/notes/${note._id}`,
-              "educationalLevel": "University"
-            }
-          }))
-        }
-      },
-      {
-        "@type": "ItemList",
-        "@id": `${APP_URL}/#collections`,
-        "name": "Curated Study Collections",
-        "itemListElement": collections.map((col, index) => ({
-          "@type": "ListItem",
-          "position": index + 1,
-          "item": {
-            "@type": "CollectionPage",
-            "name": col.name,
-            "url": `${APP_URL}/shared-collections/${col.slug}`
-          }
-        }))
+        "about": { "@id": `${APP_URL}/#organization` }
       }
     ]
   };
@@ -166,23 +134,16 @@ export default async function HomePage() {
   const statCardClass = "relative group flex flex-col items-center p-3 sm:p-10 rounded-[1.5rem] sm:rounded-[2rem] bg-white/[0.02] border border-white/5 backdrop-blur-xl hover:bg-white/[0.04] hover:border-white/10 transition-all duration-500 overflow-hidden h-full justify-center";
 
   return (
-    <main 
-      className="flex flex-col w-full overflow-hidden bg-background"
-      itemScope 
-      itemType="https://schema.org/WebPage"
-    >
+    <main className="flex flex-col w-full overflow-hidden bg-background">
+      {/* INJECT KNOWLEDGE GRAPH */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-
-      <div className="sr-only">
-        <h1>StuHive: The Global Hub for Free Academic Notes, Study Materials & Peer Collections</h1>
-        <p>Download free university PDFs, read student blogs, and join the Hall of Fame.</p>
-      </div>
 
       <HeroSection />
 
+      {/* --- PLATFORM STATS --- */}
       <section className="relative z-20 -mt-16 sm:-mt-24 container max-w-7xl px-2 sm:px-6 pt-10" aria-label="StuHive Platform Statistics">
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-6">
-          <div className={statCardClass} title="Total Academic Notes Available">
+          <div className={statCardClass}>
             <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div className="p-3 sm:p-5 bg-cyan-500/10 rounded-xl sm:rounded-2xl text-cyan-400 mb-2 sm:mb-6 shadow-[0_0_30px_rgba(34,211,238,0.15)] group-hover:-translate-y-1 transition-transform">
               <FileText className="w-5 h-5 sm:w-8 sm:h-8" aria-hidden="true" />
@@ -193,7 +154,7 @@ export default async function HomePage() {
             <h2 className="text-[9px] sm:text-[13px] font-bold text-cyan-400 uppercase tracking-[0.1em] sm:tracking-[0.2em] mt-1 sm:mt-2 text-center">Total Notes</h2>
           </div>
           
-          <div className={statCardClass} title="Active Students Worldwide">
+          <div className={statCardClass}>
             <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div className="p-3 sm:p-5 bg-purple-500/10 rounded-xl sm:rounded-2xl text-purple-400 mb-2 sm:mb-6 shadow-[0_0_30px_rgba(168,85,247,0.15)] group-hover:-translate-y-1 transition-transform">
               <Users className="w-5 h-5 sm:w-8 sm:h-8" aria-hidden="true" />
@@ -204,7 +165,7 @@ export default async function HomePage() {
             <h2 className="text-[9px] sm:text-[13px] font-bold text-purple-400 uppercase tracking-[0.1em] sm:tracking-[0.2em] mt-1 sm:mt-2 text-center">Active Students</h2>
           </div>
 
-          <div className={`${statCardClass} col-span-2 lg:col-span-1 py-4 sm:py-10`} title="Total Free Downloads">
+          <div className={`${statCardClass} col-span-2 lg:col-span-1 py-4 sm:py-10`}>
             <div className="absolute inset-0 bg-gradient-to-b from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div className="p-3 sm:p-5 bg-green-500/10 rounded-xl sm:rounded-2xl text-green-400 mb-2 sm:mb-6 shadow-[0_0_30px_rgba(34,197,94,0.15)] group-hover:-translate-y-1 transition-transform">
               <Download className="w-5 h-5 sm:w-8 sm:h-8" aria-hidden="true" />
@@ -217,7 +178,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* --- FEATURED COLLECTIONS --- */}
+      {/* --- FEATURED COLLECTIONS (NEW) --- */}
       {collections.length > 0 && (
         <section className="relative container max-w-7xl py-12 sm:py-20 px-2 sm:px-6" aria-label="Curated Study Collections">
           <div className="absolute top-[20%] right-0 w-[400px] h-[400px] bg-cyan-500/5 blur-[150px] rounded-full pointer-events-none" />
@@ -245,6 +206,7 @@ export default async function HomePage() {
             </Link>
           </div>
 
+          {/* 🚀 SEO: ItemList Schema for Collections + grid-cols-2 on Mobile */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6 relative z-10" itemScope itemType="https://schema.org/ItemList">
             {collections.map((col, index) => (
               <div key={col._id} itemProp="itemListElement" itemScope itemType="https://schema.org/ListItem" className="h-full">
@@ -252,30 +214,32 @@ export default async function HomePage() {
                 <Link 
                   href={`/shared-collections/${col.slug}`} 
                   className="block h-full group outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 rounded-[1.2rem] sm:rounded-[2rem]"
-                  itemProp="url"
                 >
                   <article 
+                    // 🚀 Highly responsive padding and border radius for the 2-column mobile layout
                     className="relative flex flex-col justify-between h-full p-4 sm:p-8 rounded-[1.2rem] sm:rounded-[2rem] bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] hover:border-cyan-500/40 transition-all duration-500 overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_40px_-15px_rgba(34,211,238,0.15)]"
                     itemProp="item" itemScope itemType="https://schema.org/CollectionPage"
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
                     
                     <div className="relative z-10">
+                      {/* Responsive Title */}
                       <h3 className="text-sm sm:text-2xl font-black text-white/95 mb-2 sm:mb-3 group-hover:text-cyan-400 transition-colors line-clamp-2 leading-snug sm:leading-tight tracking-tight" itemProp="name">
                         {col.name}
                       </h3>
+                      {/* Responsive Description (Smaller on mobile) */}
                       <p className="text-[10px] sm:text-sm text-gray-400 line-clamp-2 sm:line-clamp-3 mb-4 sm:mb-8 leading-relaxed font-medium" itemProp="description">
                         {col.description || 'Access this premium curated bundle of academic resources tailored for specific coursework.'}
                       </p>
                     </div>
 
                     <div className="relative z-10 flex flex-wrap items-center justify-between gap-2 mt-auto pt-3 sm:pt-5 border-t border-white/10">
-                      <div className="flex items-center gap-2 sm:gap-3 min-w-0 pr-2" itemProp="author" itemScope itemType="https://schema.org/Person">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0 pr-2">
                         <Avatar className="w-5 h-5 sm:w-8 sm:h-8 border border-white/20 shrink-0">
-                          <AvatarImage src={col.user?.avatar} alt={col.user?.name} itemProp="image"/>
+                          <AvatarImage src={col.user?.avatar} alt={col.user?.name} />
                           <AvatarFallback className="bg-cyan-900 text-cyan-400 font-bold text-[8px] sm:text-xs">{col.user?.name?.charAt(0)}</AvatarFallback>
                         </Avatar>
-                        <span className="text-[9px] sm:text-xs font-bold text-gray-300 truncate group-hover:text-white transition-colors" itemProp="name">
+                        <span className="text-[9px] sm:text-xs font-bold text-gray-300 truncate group-hover:text-white transition-colors">
                           {col.user?.name}
                         </span>
                       </div>
@@ -311,12 +275,10 @@ export default async function HomePage() {
         </div>
         
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-8 relative z-10" itemScope itemType="https://schema.org/ItemList">
-          {featuredNotes?.map((note, idx) => (
+          {featuredNotesRes?.notes?.map((note, idx) => (
             <article key={note._id} itemProp="itemListElement" itemScope itemType="https://schema.org/ListItem" className="w-full transition-transform duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(250,204,21,0.15)] rounded-[28px]">
                 <meta itemProp="position" content={idx + 1} />
-                <div itemProp="item" itemScope itemType="https://schema.org/LearningResource"> {/* 🚀 FIX: Also reverted to basic LearningResource here */}
-                  <NoteCard note={note} priority={idx === 0} />
-                </div>
+                <NoteCard note={note} priority={idx === 0} />
             </article>
           ))}
         </div>
@@ -377,7 +339,7 @@ export default async function HomePage() {
                       'from-cyan-500/20'} via-transparent to-transparent`} 
                   />
                   
-                  <div className="relative flex items-center gap-3 sm:gap-4 z-10 flex-1 min-w-0" itemScope itemType="https://schema.org/Person">
+                  <div className="relative flex items-center gap-3 sm:gap-4 z-10 flex-1 min-w-0">
                     <span className={`text-lg sm:text-2xl font-black w-6 sm:w-8 text-center shrink-0
                       ${index === 0 ? "text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.8)]" : 
                         index === 1 ? "text-slate-300 drop-shadow-[0_0_10px_rgba(203,213,225,0.8)]" : 
@@ -388,13 +350,13 @@ export default async function HomePage() {
                     </span>
 
                     <Avatar className={`w-10 h-10 sm:w-12 sm:h-12 border-2 shrink-0 ${index === 0 ? "border-yellow-400" : index === 1 ? "border-slate-300" : index === 2 ? "border-amber-600" : "border-white/20 group-hover:border-cyan-400/50 transition-colors"}`}>
-                      <AvatarImage src={user.avatar || user.image} referrerPolicy="no-referrer" alt={`${user.name}'s Avatar`} itemProp="image"/>
+                      <AvatarImage src={user.avatar || user.image} referrerPolicy="no-referrer" alt={`${user.name}'s Avatar`} />
                       <AvatarFallback className="text-xs bg-white/10">{user.name?.charAt(0)}</AvatarFallback>
                     </Avatar>
 
                     <div className="min-w-0 flex-1 pr-2">
-                      <p className="font-bold text-sm sm:text-base text-white truncate group-hover:text-cyan-400 transition-colors" itemProp="name">{user.name}</p>
-                      <p className="text-[9px] sm:text-[11px] text-gray-400 uppercase tracking-[0.15em] font-bold truncate mt-0.5" itemProp="jobTitle">{user.role || 'Top Scholar'}</p>
+                      <p className="font-bold text-sm sm:text-base text-white truncate group-hover:text-cyan-400 transition-colors">{user.name}</p>
+                      <p className="text-[9px] sm:text-[11px] text-gray-400 uppercase tracking-[0.15em] font-bold truncate mt-0.5">{user.role || 'Top Scholar'}</p>
                     </div>
                   </div>
                   
@@ -445,9 +407,7 @@ export default async function HomePage() {
             {blogs && blogs.length > 0 ? blogs.slice(0, 2).map((blog, idx) => (
               <article key={blog._id} itemProp="itemListElement" itemScope itemType="https://schema.org/ListItem" className="transition-transform duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(168,85,247,0.15)] rounded-[1.5rem]">
                 <meta itemProp="position" content={idx + 1} />
-                <div itemProp="item" itemScope itemType="https://schema.org/BlogPosting">
-                  <BlogCard blog={blog} />
-                </div>
+                <BlogCard blog={blog} />
               </article>
             )) : (
               <div className="col-span-2 flex flex-col items-center justify-center p-8 sm:p-20 border border-dashed border-white/10 rounded-[1.5rem] sm:rounded-[2rem] bg-white/[0.01]">

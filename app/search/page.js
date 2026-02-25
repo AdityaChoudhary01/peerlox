@@ -9,8 +9,9 @@ import Link from "next/link";
 // 🚀 ENFORCED WWW DOMAIN
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.stuhive.in";
 
-// ✅ 1. ULTRA DYNAMIC METADATA ENGINE
+// ✅ 1. HIGH-OCTANE DYNAMIC METADATA
 export async function generateMetadata({ searchParams }) {
+  // Await the params object FIRST before destructuring (Next.js 15 requirement)
   const params = await searchParams;
   const { search, university, subject, course, page } = params;
   
@@ -21,17 +22,29 @@ export async function generateMetadata({ searchParams }) {
   if (search) dynamicTitle = `Results for "${search}"`;
   
   const pageSuffix = page > 1 ? ` - Page ${page}` : "";
-  const description = `Access verified ${subject || 'academic'} notes and ${course || 'course'} materials ${university ? `at ${university}` : ''}. Join StuHive to download high-quality PDFs and exam guides.`;
+
+  // Build canonical URL to prevent duplicate parameter indexing
+  const queryParams = new URLSearchParams();
+  if (search) queryParams.set("search", search);
+  if (university) queryParams.set("university", university);
+  if (course) queryParams.set("course", course);
+  if (subject) queryParams.set("subject", subject);
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
 
   return {
     title: `${dynamicTitle} | StuHive Library${pageSuffix}`,
-    description,
-    alternates: { canonical: `${APP_URL}/search` },
-    robots: { index: true, follow: true },
+    description: `Explore verified academic notes, course materials, and exam guides. Filter by university, subject, and course level.`,
+    alternates: {
+      canonical: `${APP_URL}/search${queryString}`,
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
     openGraph: {
-      title: `${dynamicTitle} | StuHive`,
-      description,
-      url: `${APP_URL}/search`,
+      title: `${dynamicTitle} | StuHive Archive`,
+      description: `Access a comprehensive library of student-led academic resources.`,
+      url: `${APP_URL}/search${queryString}`,
       siteName: "StuHive",
       type: "website",
     },
@@ -59,38 +72,13 @@ export default async function SearchPage({ searchParams }) {
     sort
   });
 
-  // 🚀 2. FIX: ITEMLIST SCHEMA FOR REVIEW SNIPPETS
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "CollectionPage",
-    "name": search ? `Study notes for ${search}` : "StuHive Academic Library",
-    "description": "A curated collection of university notes and study guides.",
-    "breadcrumb": {
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home", "item": APP_URL },
-        { "@type": "ListItem", "position": 2, "name": "Library", "item": `${APP_URL}/search` }
-      ]
-    },
-    "mainEntity": {
-      "@type": "ItemList",
-      "numberOfItems": notes.length,
-      "itemListElement": notes.map((note, index) => ({
-        "@type": "ListItem",
-        "position": index + 1,
-        "item": {
-          "@type": ["LearningResource", "Course", "CreativeWork"],
-          "name": note.title,
-          "url": `${APP_URL}/notes/${note._id}`,
-          "image": note.thumbnailKey ? `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${note.thumbnailKey}` : undefined,
-          "aggregateRating": {
-            "@type": "AggregateRating",
-            "ratingValue": note.rating || "5.0",
-            "reviewCount": note.numReviews || "1"
-          }
-        }
-      }))
-    }
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": APP_URL },
+      { "@type": "ListItem", "position": 2, "name": "Library", "item": `${APP_URL}/search` }
+    ]
   };
 
   const styles = {
@@ -106,7 +94,7 @@ export default async function SearchPage({ searchParams }) {
   };
 
   return (
-    <div className="w-full bg-background selection:bg-primary/30" style={styles.wrapper}>
+    <div className="w-full bg-background" style={styles.wrapper}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -114,47 +102,39 @@ export default async function SearchPage({ searchParams }) {
 
       <div className="container max-w-7xl px-2 sm:px-4">
         <nav className="flex items-center gap-3 mb-6 pl-1" aria-label="Breadcrumb navigation">
-            <Link href="/" title="Back to Home" className="p-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-white/50 hover:text-white shrink-0">
+            <Link href="/" title="Back to Home" aria-label="Return to Homepage" className="p-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-white/50 hover:text-white shrink-0">
                 <FaArrowLeft size={12} aria-hidden="true" />
             </Link>
-            <div className="flex flex-col">
-               <span className="text-[8px] font-black uppercase tracking-[0.4em] text-primary">Library</span>
-               <h2 className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-none mt-1">Open Archive</h2>
-            </div>
+            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30">Library Archive</span>
         </nav>
 
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-10">
           <aside className="w-full lg:w-1/4">
             <div className="lg:sticky lg:top-24 space-y-4">
-                <div className="flex items-center justify-between mb-2 px-1">
-                    <div className="flex items-center gap-2">
-                        <FaFilter className="text-primary text-[10px]" aria-hidden="true" />
-                        <h2 className="text-[10px] font-black uppercase tracking-widest text-white">Refine Search</h2>
-                    </div>
-                    {totalCount > 0 && <span className="text-[8px] font-bold bg-white/10 px-2 py-0.5 rounded-full text-white/60">{totalCount} Found</span>}
+                <div className="flex items-center gap-2 mb-2 px-1">
+                    <FaFilter className="text-primary text-[10px]" aria-hidden="true" />
+                    <h2 className="text-[10px] font-black uppercase tracking-widest text-white">Refine Search</h2>
                 </div>
-                <div className="p-1 rounded-[1.8rem] bg-white/[0.02] border border-white/10 backdrop-blur-xl shadow-2xl">
+                <div className="p-1 rounded-[1.5rem] bg-white/[0.02] border border-white/10 backdrop-blur-sm">
                     <NoteFilter />
                 </div>
             </div>
           </aside>
 
           <main className="w-full lg:w-3/4">
-            <header style={styles.headerBox} className="relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors" />
-                
-                <div className="flex flex-col gap-6 relative z-10">
+            <header style={styles.headerBox}>
+                <div className="flex flex-col gap-6">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                             <h1 className="text-2xl md:text-4xl font-black text-white tracking-tighter flex items-center gap-3">
-                                <div className="p-2.5 bg-primary/10 rounded-xl text-primary shrink-0 ring-1 ring-primary/20">
+                                <div className="p-2.5 bg-primary/10 rounded-xl text-primary shrink-0">
                                     <FaSearch size={18} aria-hidden="true" />
                                 </div>
                                 <span className="truncate">{search ? `Results for: ${search}` : "Discovery Engine"}</span>
                             </h1>
-                            <p className="text-white/40 text-[9px] font-black uppercase tracking-[0.2em] mt-4 flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]" aria-hidden="true"></span>
-                                {totalCount.toLocaleString()} Educational Assets Indexed
+                            <p className="text-white/40 text-[9px] font-bold uppercase tracking-widest mt-3 flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" aria-hidden="true"></span>
+                                {totalCount.toLocaleString()} Materials Indexed
                             </p>
                         </div>
                     </div>
@@ -168,33 +148,32 @@ export default async function SearchPage({ searchParams }) {
               <h2 id="search-results-heading" className="sr-only">Search Results Grid</h2>
               
               {notes.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                <div className="grid grid-cols-2 xl:grid-cols-3 gap-2.5 sm:gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700 justify-items-center">
                   {notes.map((note, index) => (
-                    <article key={note._id} className="w-full h-full transform-gpu transition-all duration-500 hover:-translate-y-1">
-                        <NoteCard note={note} priority={index < 3} />
+                    <article key={note._id} className="w-full h-full">
+                        <NoteCard note={note} priority={index < 4} />
                     </article>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-24 sm:py-32 rounded-[2.5rem] bg-secondary/5 border border-dashed border-white/10 mx-1">
-                    <div className="relative inline-block mb-6">
-                      <FaRegFolderOpen className="h-16 w-16 text-white/10" aria-hidden="true" />
-                      <div className="absolute inset-0 blur-3xl bg-primary/30 rounded-full" aria-hidden="true"></div>
+                <div className="text-center py-20 sm:py-32 rounded-[2rem] bg-white/[0.01] border border-dashed border-white/10 mx-1">
+                    <div className="relative inline-block mb-4">
+                      <FaRegFolderOpen className="h-14 w-14 sm:h-20 sm:w-20 text-white/10" aria-hidden="true" />
+                      <div className="absolute inset-0 blur-2xl bg-primary/20 rounded-full" aria-hidden="true"></div>
                     </div>
-                    <h3 className="text-xl font-black text-white tracking-tight uppercase">Archive Empty</h3>
-                    <p className="text-xs text-muted-foreground max-w-[240px] mx-auto mt-2 font-medium leading-relaxed">
-                      We couldn&apos;t find any resources matching your current filter criteria.
+                    <h3 className="text-xl font-black text-white/60 tracking-tight">Archive Empty</h3>
+                    <p className="text-xs text-white/30 max-w-[200px] mx-auto mt-2 italic">
+                      The requested materials haven&apos;t been indexed yet.
                     </p>
-                    <Link href="/search" className="inline-flex items-center mt-8 px-6 py-3 rounded-full bg-white text-black text-[10px] font-black uppercase tracking-widest hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all active:scale-95">
-                      Reset Discovery Engine
+                    <Link href="/search" title="Clear Search Filters" className="inline-block mt-6 text-[9px] font-black uppercase tracking-widest text-primary hover:text-white transition-colors underline underline-offset-8">
+                      Clear all filters
                     </Link>
                 </div>
               )}
             </section>
 
             {totalPages > 1 && (
-                <footer className="mt-16 sm:mt-24 p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 flex justify-center mx-1 shadow-inner" aria-label="Pagination Navigation">
-                    {/* 🚀 Pagination Component */}
+                <footer className="mt-12 sm:mt-20 p-4 sm:p-6 rounded-[1.5rem] bg-white/[0.02] border border-white/10 flex justify-center mx-1" aria-label="Pagination Navigation">
                     <Pagination currentPage={page} totalPages={totalPages} />
                 </footer>
             )}
