@@ -79,23 +79,15 @@ export default async function SearchPage({ searchParams }) {
         "@type": "ListItem",
         "position": index + 1,
         "item": {
-          // ✅ FIXED: Changed array to single string to avoid GSC mutually-exclusive errors
-          "@type": "CreativeWork", 
+          "@type": ["LearningResource", "Course", "CreativeWork"],
           "name": note.title,
           "url": `${APP_URL}/notes/${note._id}`,
-          // Optional chaining to prevent empty string errors
-          ...(note.thumbnailKey && {
-            "image": `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${note.thumbnailKey}`
-          }),
-          ...(note.rating > 0 && {
-            "aggregateRating": {
-              "@type": "AggregateRating",
-              "ratingValue": note.rating.toFixed(1),
-              "bestRating": "5",
-              "worstRating": "1",
-              "reviewCount": note.numReviews || 1
-            }
-          })
+          "image": note.thumbnailKey ? `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${note.thumbnailKey}` : undefined,
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": note.rating || "5.0",
+            "reviewCount": note.numReviews || "1"
+          }
         }
       }))
     }
