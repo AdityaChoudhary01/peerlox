@@ -20,18 +20,28 @@ export default async function BlogListServer({ params }) {
   const { blogs, totalPages } = blogsData;
   const categories = ["All", ...dynamicTags]; 
 
+  // 🚀 SUPERCHARGED JSON-LD: Exposes Authors, Headlines, and Dates to Google
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
     "name": "StuHive Academic Blogs",
-    "description": "A collection of student-written articles.",
+    "description": "A collection of student-written articles, exam tips, and insights.",
     "url": `${APP_URL}/blogs`,
     "mainEntity": {
       "@type": "ItemList",
       "itemListElement": blogs.map((b, i) => ({
         "@type": "ListItem",
         "position": i + 1,
-        "url": `${APP_URL}/blogs/${b.slug}`
+        "item": {
+          "@type": "BlogPosting", // 🚀 Crucial: Tells Google these are Articles, not just links
+          "headline": b.title,
+          "url": `${APP_URL}/blogs/${b.slug}`,
+          "datePublished": b.createdAt,
+          "author": {
+            "@type": "Person",
+            "name": b.author?.name || "StuHive Contributor"
+          }
+        }
       }))
     }
   };
@@ -44,7 +54,7 @@ export default async function BlogListServer({ params }) {
       />
 
       <div className="max-w-4xl mx-auto mb-12">
-        <nav className="relative w-full overflow-hidden" aria-label="Blog Categories">
+        <nav className="relative w-full overflow-hidden" aria-label="Blog Categories Filter">
             {/* Fade gradients to indicate scrolling is possible */}
             <div className="absolute left-0 top-0 bottom-4 w-8 bg-gradient-to-r from-[#0a0a0a] to-transparent pointer-events-none z-10" />
             <div className="absolute right-0 top-0 bottom-4 w-12 bg-gradient-to-l from-[#0a0a0a] to-transparent pointer-events-none z-10" />
@@ -55,6 +65,7 @@ export default async function BlogListServer({ params }) {
                     <Link 
                         key={cat} 
                         href={`/blogs?${new URLSearchParams({ ...(search && { search }), ...(cat !== "All" && { tag: cat }) })}`}
+                        title={`Filter blogs by ${cat}`}
                         className={`snap-start shrink-0 px-5 py-2.5 rounded-full text-sm font-bold uppercase tracking-wider transition-all duration-300 ${
                             tag === cat 
                             ? "bg-cyan-500 text-black shadow-[0_0_15px_rgba(34,211,238,0.4)]" 
@@ -70,10 +81,25 @@ export default async function BlogListServer({ params }) {
 
       <section aria-label="Blog posts grid">
         {blogs.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div 
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+            itemScope 
+            itemType="https://schema.org/ItemList" // 🚀 SEO Microdata Container
+          >
               {blogs.map((blog, index) => (
-                  <article key={blog._id} className="h-full transform transition-all duration-300 hover:-translate-y-2">
-                      <BlogCard blog={blog} priority={index === 0} />
+                  <article 
+                    key={blog._id} 
+                    className="h-full transform transition-all duration-300 hover:-translate-y-2"
+                    itemProp="itemListElement" 
+                    itemScope 
+                    itemType="https://schema.org/ListItem"
+                  >
+                      {/* 🚀 Tracks position visually for Google's schema parser */}
+                      <meta itemProp="position" content={index + 1} />
+                      
+                      <div itemProp="item" itemScope itemType="https://schema.org/BlogPosting" className="h-full">
+                         <BlogCard blog={blog} priority={index === 0} />
+                      </div>
                   </article>
               ))}
           </div>
@@ -84,7 +110,7 @@ export default async function BlogListServer({ params }) {
               <p className="text-base text-gray-400">Be the first to share your experience with the community!</p>
               
               {(search || tag !== "All") && (
-                <Link href="/blogs" className="inline-block mt-6">
+                <Link href="/blogs" className="inline-block mt-6" title="Reset blog filters">
                   <Button variant="outline" className="rounded-full">Clear Filters</Button>
                 </Link>
               )}
@@ -93,7 +119,7 @@ export default async function BlogListServer({ params }) {
       </section>
 
       {totalPages > 1 && (
-        <footer className="mt-16" aria-label="Pagination">
+        <footer className="mt-16" aria-label="Pagination Navigation">
             <Pagination currentPage={Number(page)} totalPages={totalPages} />
         </footer>
       )}

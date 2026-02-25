@@ -36,12 +36,14 @@ export async function generateMetadata({ params }) {
     "StuHive Blogs",
     "student community",
     "academic blog",
-    "tech blog"
+    "tech blog",
+    "university insights",
+    "exam strategies"
   ].filter(Boolean);
 
   return {
     title: `${blog.title} | StuHive Blogs`,
-    description: `${blog.summary?.substring(0, 150)}... Read more on StuHive.`,
+    description: `${blog.summary?.substring(0, 150) || blog.excerpt || 'Read this comprehensive student-written article on StuHive.'}...`,
     keywords: dynamicKeywords,
     authors: [{ name: blog.author?.name || "StuHive Contributor", url: `${APP_URL}/profile/${blog.author?._id}` }],
     creator: blog.author?.name || "StuHive Contributor",
@@ -68,6 +70,7 @@ export async function generateMetadata({ params }) {
       siteName: "StuHive",
       type: "article",
       publishedTime: blog.createdAt ? new Date(blog.createdAt).toISOString() : new Date().toISOString(),
+      modifiedTime: blog.updatedAt ? new Date(blog.updatedAt).toISOString() : new Date().toISOString(),
       authors: [blog.author?.name || "StuHive Contributor"],
       tags: dynamicKeywords.slice(0, 6),
       images: [
@@ -76,6 +79,7 @@ export async function generateMetadata({ params }) {
           width: 1200,
           height: 630,
           alt: blog.title,
+          type: "image/jpeg"
         }
       ],
     },
@@ -101,13 +105,14 @@ export default async function BlogDetailPage({ params }) {
   incrementBlogViews(blog._id).catch(() => {});
   const relatedBlogs = await getRelatedBlogs(blog._id);
 
-  const readTime = blog.readTime || Math.ceil((blog.content?.split(/\s+/).length || 0) / 200) || 3;
+  const wordCount = blog.content?.split(/\s+/).length || 0;
+  const readTime = blog.readTime || Math.ceil(wordCount / 200) || 3;
   const totalReviews = blog.reviews?.length || 0;
   const averageRating = totalReviews > 0
     ? (blog.reviews.reduce((acc, review) => acc + (review.rating || 0), 0) / totalReviews).toFixed(1)
     : 0;
 
-  // 🚀 2. DUAL JSON-LD INJECTION (Breadcrumb + BlogPosting)
+  // 🚀 2. DEEP DUAL JSON-LD INJECTION (Breadcrumb + Enriched BlogPosting)
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -130,6 +135,9 @@ export default async function BlogDetailPage({ params }) {
     "image": [blog.coverImage || `${APP_URL}/default-blog-og.jpg`],
     "datePublished": blog.createdAt,
     "dateModified": blog.updatedAt || blog.createdAt,
+    "wordCount": wordCount, // 🚀 SEO: Explicitly telling Google the depth of the content
+    "timeRequired": `PT${readTime}M`, // 🚀 SEO: ISO 8601 format for read time
+    "keywords": blog.tags?.join(", "),
     "author": { 
       "@type": "Person", 
       "name": blog.author?.name || "StuHive Contributor",
@@ -140,7 +148,6 @@ export default async function BlogDetailPage({ params }) {
       "name": "StuHive",
       "logo": { "@type": "ImageObject", "url": `${APP_URL}/logo192.png` }
     },
-    // ✅ FIX: Kept interaction stats (valid for BlogPosting) but REMOVED aggregateRating (invalid for BlogPosting)
     "interactionStatistic": [
       {
         "@type": "InteractionCounter",
@@ -212,39 +219,48 @@ export default async function BlogDetailPage({ params }) {
   };
 
   return (
-    <article className="container max-w-5xl py-12 px-4 sm:px-6">
+    // 🚀 MICRODATA: Tell Google this specific HTML element maps exactly to the BlogPosting schema
+    <article className="container max-w-5xl py-12 px-4 sm:px-6" itemScope itemType="https://schema.org/BlogPosting">
       {/* INJECT STRUCTURED DATA */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
       
       <header className="flex flex-col items-center text-center mb-12 space-y-8">
         
-        {/* 🚀 INTERNAL LINKING SEO: Tags act as direct links to Global Search */}
+        {/* 🚀 INTERNAL LINKING & TAGS MICRODATA */}
         <nav className="flex flex-wrap justify-center gap-2" aria-label="Tags">
           {blog.tags?.map((tag) => (
             <Link key={tag} href={`/global-search?q=${encodeURIComponent(tag)}`} title={`Search more articles about ${tag}`}>
               <Badge variant="secondary" className="px-3 py-1 text-[10px] uppercase tracking-[0.2em] font-bold shadow-sm bg-white/10 text-white hover:bg-white/20 transition-colors cursor-pointer">
-                {tag}
+                <span itemProp="keywords">{tag}</span>
               </Badge>
             </Link>
           ))}
         </nav>
 
-        <h1 className="text-4xl md:text-6xl font-black tracking-tighter leading-[1.1] text-white max-w-4xl">
+        {/* 🚀 HEADLINE MICRODATA */}
+        <h1 className="text-4xl md:text-6xl font-black tracking-tighter leading-[1.1] text-white max-w-4xl" itemProp="headline">
           {blog.title}
         </h1>
 
         <div className="w-full max-w-4xl bg-white/[0.1] border border-white/30 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
-           <address className="not-italic">
+           {/* 🚀 AUTHOR MICRODATA */}
+           <address className="not-italic" itemProp="author" itemScope itemType="https://schema.org/Person">
               <AuthorInfoBlock user={blog.author} />
            </address>
            
            <div className="hidden md:block w-px h-12 bg-white/20" />
            <div className="flex flex-wrap items-center justify-center md:justify-end gap-x-6 gap-y-3 text-sm font-medium text-gray-200">
+             
+             {/* 🚀 DATE PUBLISHED MICRODATA */}
              <span className="flex items-center gap-2" title="Published Date">
                <Calendar className="w-4 h-4 text-primary" aria-hidden="true" />
-               <time dateTime={blog.createdAt}>{formatDate(blog.createdAt)}</time>
+               <time dateTime={new Date(blog.createdAt).toISOString()} itemProp="datePublished">
+                 {formatDate(blog.createdAt)}
+               </time>
              </span>
+             {blog.updatedAt && <meta itemProp="dateModified" content={new Date(blog.updatedAt).toISOString()} />}
+             
              <span className="flex items-center gap-2" title="Estimated Read Time">
                <Clock className="w-4 h-4 text-primary" aria-hidden="true" />
                {readTime} min read
@@ -264,6 +280,7 @@ export default async function BlogDetailPage({ params }) {
         </div>
       </header>
 
+      {/* 🚀 IMAGE MICRODATA */}
       {blog.coverImage && (
         <figure className="relative w-full aspect-video mb-20 rounded-[2.5rem] overflow-hidden shadow-2xl ring-1 ring-white/20 bg-white/5">
           <Image
@@ -274,11 +291,19 @@ export default async function BlogDetailPage({ params }) {
             fetchPriority="high"
             unoptimized 
             className="object-cover transition-transform duration-1000 ease-out group-hover:scale-105"
+            itemProp="image"
           />
         </figure>
       )}
 
-      <section className="max-w-none mb-24 prose prose-invert prose-headings:tracking-tight prose-a:text-cyan-400">
+      {/* 🚀 ARTICLE BODY MICRODATA */}
+      {/* Hidden abstract/summary for semantic completeness */}
+      <meta itemProp="abstract" content={blog.summary || blog.excerpt || blog.title} />
+      
+      <section 
+        className="max-w-none mb-24 prose prose-invert prose-headings:tracking-tight prose-a:text-cyan-400"
+        itemProp="articleBody"
+      >
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={MarkdownComponents}>
             {blog.content}
           </ReactMarkdown>
