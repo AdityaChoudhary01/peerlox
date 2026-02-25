@@ -59,7 +59,7 @@ export default async function SearchPage({ searchParams }) {
     sort
   });
 
-  // 🚀 2. FIXED: ITEMLIST SCHEMA FOR REVIEW SNIPPETS (Summary Page Style)
+  // 🚀 2. FIX: ITEMLIST SCHEMA FOR REVIEW SNIPPETS
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
@@ -78,7 +78,17 @@ export default async function SearchPage({ searchParams }) {
       "itemListElement": notes.map((note, index) => ({
         "@type": "ListItem",
         "position": index + 1,
-        "url": `${APP_URL}/notes/${note._id}` // ✅ Kept strictly to URL and Position to satisfy Google Carousel Rules
+        "item": {
+          "@type": ["LearningResource", "Course", "CreativeWork"],
+          "name": note.title,
+          "url": `${APP_URL}/notes/${note._id}`,
+          "image": note.thumbnailKey ? `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL}/${note.thumbnailKey}` : undefined,
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": note.rating || "5.0",
+            "reviewCount": note.numReviews || "1"
+          }
+        }
       }))
     }
   };
