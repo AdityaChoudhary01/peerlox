@@ -64,6 +64,26 @@ export default async function BlogPage({ searchParams }) {
   // Use a stable key for Suspense based on the resolved params
   const suspenseKey = JSON.stringify(params);
 
+  // 🚀 ADDED: Breadcrumb Schema to trigger GSC Enhancements on this index page
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": APP_URL
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Blogs & Insights",
+        "item": `${APP_URL}/blogs`
+      }
+    ]
+  };
+
   return (
     // 🚀 SEO: Wrap the entire main container in the 'Blog' schema
     <main 
@@ -71,6 +91,12 @@ export default async function BlogPage({ searchParams }) {
       itemScope 
       itemType="https://schema.org/Blog"
     >
+      {/* 🚀 INJECT BREADCRUMB SCHEMA FOR GSC ENHANCEMENTS */}
+      <script 
+        type="application/ld+json" 
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} 
+      />
+
       <style>{`
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
