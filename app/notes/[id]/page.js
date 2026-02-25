@@ -139,7 +139,7 @@ export default async function ViewNotePage({ params }) {
 
   const resourceSchema = {
     "@context": "https://schema.org",
-    "@type": ["LearningResource", "CreativeWork"],
+    "@type": ["LearningResource", "Course", "CreativeWork"],
     "name": note.title,
     "description": note.description || `Study notes for ${note.subject} at ${note.university}`,
     "learningResourceType": ["Study Guide", "Lecture Notes", "Handwritten Notes"],
