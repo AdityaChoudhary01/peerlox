@@ -28,7 +28,6 @@ export default withAuth(
 
 export const config = {
   matcher: [
-    "/upload",
     "/notes/upload",
     "/feed",
     "/chat/:path*",

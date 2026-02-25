@@ -91,7 +91,7 @@ export default function Footer() {
                 { name: "Home", path: "/" },
                 { name: "About Mission", path: "/about" },
                 { name: "Blog & Insights", path: "/blogs" },
-                { name: "Share Notes", path: "/upload" },
+                { name: "Share Notes", path: "/notes/upload" },
                 { name: "Support Us", path: "/donate" }
               ].map(link => (
                 <li key={link.name}>
