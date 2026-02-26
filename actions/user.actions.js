@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { deleteFileFromR2 } from "@/lib/r2";
-
+import { createNotification } from "@/actions/notification.actions";
 /**
  * GET USER PROFILE
  */
@@ -228,6 +228,22 @@ export async function toggleFollow(currentUserId, targetUserId) {
 
     await currentUser.save();
     await targetUser.save();
+
+    // ==========================================
+    // 🚀 TRIGGER NOTIFICATION (ONLY ON FOLLOW)
+    // ==========================================
+    if (!isFollowing) {
+      // Fetching currentUser.name ensures the recipient knows exactly who it is
+      const followerName = currentUser.name || "A student";
+      
+      await createNotification({
+        recipientId: targetUserId,
+        actorId: currentUserId,
+        type: 'SYSTEM',
+        message: `${followerName} started following you!`,
+        link: `/profile/${currentUserId}` // Clicking the notification opens the new follower's profile
+      });
+    }
 
     // 🚀 FORCE CACHE BUSTING GLOBALLY FOR THESE PAGES
     revalidatePath(`/profile/${targetUserId}`, 'page');
