@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { FaBars, FaTimes, FaSearch, FaSignOutAlt, FaPaperPlane } from 'react-icons/fa';
+import { ChevronDown, Map, Calendar, Target, PenTool, BookOpen } from 'lucide-react';
 // 👇 Ably hooks
 import { useChannel, usePresence, ChannelProvider } from "ably/react"; 
 // 👇 Server Action
@@ -40,6 +41,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [unreadTotal, setUnreadTotal] = useState(0);
+  const [exploreOpen, setExploreOpen] = useState(false);
 
   const LOGO_URL = 'https://res.cloudinary.com/dmtnonxtt/image/upload/w_300,f_auto,q_auto/v1771749043/vshx4isacdlfv6x6aaqv.png';
 
@@ -99,11 +101,9 @@ export default function Navbar() {
   const isActive = (path) => pathname === path;
 
   const navLinks = [
-    { path: '/search', label: 'Notes' },
-    { path: '/shared-collections', label: 'Archives' }, 
     { path: '/feed', label: 'Feed' }, 
+    { path: '/shared-collections', label: 'Archives' }, 
     { path: '/requests', label: 'Requests' }, 
-    { path: '/blogs', label: 'Blogs' },
     { path: '/donate', label: 'Donate' },
     { path: '/admin', label: 'Admin', adminOnly: true }
   ];
@@ -146,6 +146,46 @@ export default function Navbar() {
 
           {/* 🚀 STAGE 1 COLLAPSE: Hide NavLinks < 1200px */}
           <div className="max-[1199px]:hidden flex items-center justify-center flex-1 gap-0.5 lg:gap-1">
+            
+            {/* 🚀 EXPLORE DROPDOWN (Desktop) */}
+            <div 
+              className="relative group"
+              onMouseEnter={() => setExploreOpen(true)}
+              onMouseLeave={() => setExploreOpen(false)}
+            >
+              <button className={`flex items-center gap-1.5 px-3 lg:px-4 py-2 text-[0.85rem] lg:text-[0.9rem] font-medium rounded-full transition-all duration-300 whitespace-nowrap font-sans
+                ${pathname.includes('/search') || pathname.includes('/blogs') || pathname.includes('/roadmaps') || pathname.includes('/planner') ? 'bg-white/10 text-white font-semibold' : 'text-[#e0e0e0] hover:bg-white/5'}
+              `}>
+                Explore <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${exploreOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              <div className={`absolute top-full left-0 mt-2 w-48 bg-[#0a0118]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl transition-all duration-200 origin-top-left overflow-hidden
+                ${exploreOpen ? 'opacity-100 scale-100 visible' : 'opacity-0 scale-95 invisible'}
+              `}>
+                <div className="p-2 space-y-1">
+                  <Link href="/search" className="flex items-center gap-3 p-2.5 hover:bg-white/10 rounded-xl transition-colors text-sm text-gray-300 hover:text-white">
+                    <BookOpen className="w-4 h-4 text-emerald-400" /> Note Vault
+                  </Link>
+                  <Link href="/blogs" className="flex items-center gap-3 p-2.5 hover:bg-white/10 rounded-xl transition-colors text-sm text-gray-300 hover:text-white">
+                    <PenTool className="w-4 h-4 text-pink-400" /> Articles
+                  </Link>
+                  
+                  <div className="h-[1px] bg-white/10 my-1 mx-2" />
+                  
+                  <Link href="/roadmaps" className="flex items-center gap-3 p-2.5 hover:bg-cyan-500/10 rounded-xl transition-colors text-sm text-gray-300 hover:text-cyan-300 group">
+                    <Map className="w-4 h-4 text-cyan-400" /> Roadmaps
+                  </Link>
+                  
+                  {/* 🚀 ADDED: My Planner inside Desktop Dropdown */}
+                  {status === "authenticated" && session && (
+                    <Link href="/planner" className="flex items-center gap-3 p-2.5 hover:bg-cyan-500/10 rounded-xl transition-colors text-sm text-gray-300 hover:text-cyan-300 group">
+                      <Target className="w-4 h-4 text-cyan-400 group-hover:animate-pulse" /> My Planner
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {navLinks.map(link => {
               if (link.adminOnly && session?.user?.role !== 'admin') return null;
               return (
@@ -235,7 +275,7 @@ export default function Navbar() {
             </button>
          </div>
          
-        {/* Mobile Search: Only visible < 900px */}
+        {/* Mobile Search */}
         <div className="mb-6 shrink-0 min-[900px]:hidden">
           <form onSubmit={handleSearch} className="flex items-center w-full bg-black/20 p-2 rounded-full border border-white/15">
             <input type="text" placeholder="Search..." aria-label="Search term" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-transparent border-none text-white outline-none flex-1 text-[0.9rem] px-2 font-sans" />
@@ -247,12 +287,33 @@ export default function Navbar() {
 
         <div className="flex flex-col gap-2 overflow-y-auto pb-6 flex-1 pr-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
           
-          {/* Mobile Upload: Only visible < 640px */}
+          {/* Mobile Upload */}
           {status === "authenticated" && session && (
             <Link href="/notes/upload" onClick={() => setMenuOpen(false)} className="min-[640px]:hidden p-3.5 rounded-2xl text-[1.05rem] font-bold flex items-center gap-4 text-cyan-400 bg-cyan-400/10 border border-cyan-400/20 hover:bg-cyan-400/20 transition-colors mb-2">
               + Upload Note
             </Link>
           )}
+
+          {/* 🚀 Mobile Explore Links */}
+          <div className="p-3 bg-white/5 rounded-2xl mb-2 space-y-1">
+            <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-2 mb-2 block">Explore</span>
+            <Link href="/search" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 p-2 hover:bg-white/10 rounded-xl transition-colors text-sm text-gray-300">
+              <BookOpen className="w-4 h-4 text-emerald-400" /> Note Vault
+            </Link>
+            <Link href="/blogs" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 p-2 hover:bg-white/10 rounded-xl transition-colors text-sm text-gray-300">
+              <PenTool className="w-4 h-4 text-pink-400" /> Articles
+            </Link>
+            <Link href="/roadmaps" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 p-2 hover:bg-white/10 rounded-xl transition-colors text-sm text-gray-300">
+              <Map className="w-4 h-4 text-cyan-400" /> Community Roadmaps
+            </Link>
+            
+            {/* 🚀 ADDED: My Planner inside Mobile Explore Box */}
+            {status === "authenticated" && session && (
+              <Link href="/planner" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 p-2 hover:bg-white/10 rounded-xl transition-colors text-sm text-cyan-400">
+                <Target className="w-4 h-4" /> My Planner
+              </Link>
+            )}
+          </div>
 
           {/* NavLinks: Always visible inside the Menu */}
           {navLinks.map(link => {
@@ -264,17 +325,17 @@ export default function Navbar() {
             );
           })}
           
-          <div className="h-[1px] bg-white/10 my-4 shrink-0 min-[640px]:hidden" />
+          <div className="h-[1px] bg-white/10 my-4 shrink-0" />
           
-          {/* Mobile Profile & Logout: Only visible < 640px */}
+          {/* Mobile Profile & Logout */}
           {session ? (
-            <div className="min-[640px]:hidden flex flex-col gap-2">
-              <Link href="/profile" onClick={() => setMenuOpen(false)} className="p-3.5 text-white rounded-2xl text-[1.05rem] font-medium flex items-center gap-4 hover:bg-white/5 transition-colors">
+            <div className="flex flex-col gap-2">
+              <Link href="/profile" onClick={() => setMenuOpen(false)} className="min-[640px]:hidden p-3.5 text-white rounded-2xl text-[1.05rem] font-medium flex items-center gap-4 hover:bg-white/5 transition-colors">
                 <div className="relative w-6 h-6 overflow-hidden rounded-full shrink-0">
                   <Image src={session.user.image || session.user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user.name)}`} alt={`${session.user.name}'s Profile`} fill className="object-cover" />
                 </div> Profile
               </Link>
-              <button onClick={handleLogout} className="mt-2 p-3.5 rounded-2xl text-[1.05rem] font-medium flex items-center justify-center gap-2 text-[#ff3b30] bg-[#ff3b30]/5 hover:bg-[#ff3b30]/10 w-full transition-colors cursor-pointer shrink-0">
+              <button onClick={handleLogout} className="min-[640px]:hidden mt-2 p-3.5 rounded-2xl text-[1.05rem] font-medium flex items-center justify-center gap-2 text-[#ff3b30] bg-[#ff3b30]/5 hover:bg-[#ff3b30]/10 w-full transition-colors cursor-pointer shrink-0">
                 <FaSignOutAlt aria-hidden="true" /> Logout
               </button>
             </div>

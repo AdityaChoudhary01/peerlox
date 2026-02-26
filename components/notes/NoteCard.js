@@ -15,6 +15,9 @@ import { useToast } from "@/hooks/use-toast";
 import { incrementDownloadCount, getNoteDownloadUrl } from "@/actions/note.actions";
 import { toggleSaveNote } from "@/actions/user.actions";
 
+// 🚀 IMPORTED: Planner Button
+import AddToPlanButton from "@/components/planner/AddToPlanButton";
+
 const FileIcon = ({ type, className }) => {
   if (type?.includes("pdf")) return <FileText className={className} aria-hidden="true" />;
   if (type?.includes("image")) return <ImageIcon className={className} aria-hidden="true" />;
@@ -101,8 +104,10 @@ export default function NoteCard({ note, priority = false }) {
 
   return (
     <Card
+      // 🚀 FIX: Adding this empty onClick forces iOS/Safari to register touch events outside the popover, automatically closing the planner menu!
+      onClick={() => {}} 
       className="w-full max-w-[400px] mx-auto h-full flex flex-col group relative bg-[#050505]
-        border border-white/10 rounded-[28px] overflow-hidden isolate
+        border border-white/10 rounded-[28px] overflow-visible
         transition-all duration-500 transform-gpu will-change-transform
         hover:translate-y-[-6px] hover:border-cyan-500/40
         hover:shadow-[0_34px_95px_-65px_rgba(34,211,238,0.75)]
@@ -115,32 +120,43 @@ export default function NoteCard({ note, priority = false }) {
     >
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(noteSchema) }} />
 
-      {/* top accent line */}
-      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-50 pointer-events-none" />
+      {/* Action Buttons Container (Outside the overflow-hidden wrapper) */}
+      <div 
+        className="absolute top-4 right-4 z-[60] flex flex-col-reverse sm:flex-row items-center gap-2"
+        // 🚀 FIX: Stops the popover click from triggering the card's dummy click handler
+        onClick={(e) => e.stopPropagation()} 
+      >
+        <div className="bg-black/40 backdrop-blur-xl rounded-full border border-white/10 hover:border-cyan-500/50 transition-colors">
+          <AddToPlanButton resourceId={note._id} resourceType="Note" />
+        </div>
 
-      {/* hover glow */}
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none bg-[radial-gradient(900px_circle_at_30%_10%,rgba(34,211,238,0.10),transparent_55%)]" />
+        <button
+          onClick={handleSave}
+          aria-label={isSaved ? "Remove from saved collection" : "Save note to collection"}
+          className="p-2.5 rounded-full bg-black/80 backdrop-blur-xl
+            border border-white/20 hover:bg-white/10
+            transition-all duration-300 transform-gpu hover:scale-110
+            shadow-[0_18px_45px_-25px_rgba(0,0,0,0.9)]
+            outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60"
+        >
+          <Heart
+            aria-hidden="true"
+            className={`h-4 w-4 transition-colors duration-300 ${
+              isSaved ? "fill-pink-500 text-pink-500 drop-shadow-[0_0_10px_rgba(236,72,153,0.9)]" : "text-gray-300"
+            }`}
+          />
+        </button>
+      </div>
 
-      <div className="flex flex-col h-full bg-[#050505] relative z-10">
+      <div className="flex flex-col h-full bg-[#050505] relative z-10 rounded-[28px] overflow-hidden">
+        {/* top accent line */}
+        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-50 pointer-events-none" />
+
+        {/* hover glow */}
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none bg-[radial-gradient(900px_circle_at_30%_10%,rgba(34,211,238,0.10),transparent_55%)]" />
+
         {/* --- TOP SECTION (IMAGE) --- */}
         <div className="relative h-48 sm:h-56 w-full shrink-0 transform-gpu overflow-hidden -mb-[1px] z-0">
-          <button
-            onClick={handleSave}
-            aria-label={isSaved ? "Remove from saved collection" : "Save note to collection"}
-            className="absolute top-4 right-4 z-40 p-2.5 rounded-full bg-black/80 backdrop-blur-xl
-              border border-white/20 hover:bg-white/10
-              transition-all duration-300 transform-gpu hover:scale-110
-              shadow-[0_18px_45px_-25px_rgba(0,0,0,0.9)]
-              outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60"
-          >
-            <Heart
-              aria-hidden="true"
-              className={`h-4 w-4 transition-colors duration-300 ${
-                isSaved ? "fill-pink-500 text-pink-500 drop-shadow-[0_0_10px_rgba(236,72,153,0.9)]" : "text-gray-300"
-              }`}
-            />
-          </button>
-
           <div className="absolute top-4 left-4 z-40 flex flex-col items-start gap-2.5 max-w-[70%]">
             {note.isFeatured && (
               <Badge className="relative overflow-hidden bg-gradient-to-r from-amber-500 to-orange-600 border-0 text-[9px] font-black uppercase tracking-widest text-white px-3 py-1 shadow-lg">
@@ -163,7 +179,7 @@ export default function NoteCard({ note, priority = false }) {
                 priority={priority}
                 fetchPriority={priority ? "high" : "auto"}
                 unoptimized={true}
-                className="object-cover transition-transform duration-[1500ms] ease-out group-hover:scale-[1.08]
+                className="object-cover transition-transform transition-duration-[1500ms] ease-out group-hover:scale-[1.08]
                   opacity-85 group-hover:opacity-100 will-change-transform transform-gpu"
               />
             ) : (
