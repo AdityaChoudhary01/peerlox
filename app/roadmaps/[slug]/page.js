@@ -8,6 +8,11 @@ import { format } from "date-fns";
 import Link from "next/link";
 import ClonePlanButton from "@/components/planner/ClonePlanButton";
 
+// 🚀 NEW IMPORTS FOR FETCHING TITLES & SLUGS
+import connectDB from "@/lib/db";
+import Blog from "@/lib/models/Blog";
+import Note from "@/lib/models/Note";
+
 // Dynamic metadata for SEO
 export async function generateMetadata({ params }) {
   const { slug } = await params;
@@ -30,6 +35,36 @@ export default async function RoadmapPage({ params }) {
 
   // If the plan doesn't exist or isn't public, throw a 404 page
   if (!plan) notFound();
+
+  await connectDB();
+
+  // 🚀 FIX: ENRICH RESOURCES WITH REAL TITLES AND BLOG SLUGS
+  const enrichedResources = await Promise.all(
+    plan.resources.map(async (res) => {
+      let displayTitle = "Unknown Resource";
+      let resourceLink = "#";
+
+      try {
+        if (res.resourceType === 'Note') {
+          const note = await Note.findById(res.resourceId).select('title').lean();
+          if (note) {
+            displayTitle = note.title;
+            resourceLink = `/notes/${res.resourceId}`;
+          }
+        } else if (res.resourceType === 'Blog') {
+          const blog = await Blog.findById(res.resourceId).select('title slug').lean();
+          if (blog) {
+            displayTitle = blog.title;
+            resourceLink = `/blogs/${blog.slug}`; // 🚀 FIXED: Now uses the actual slug!
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching resource:", error);
+      }
+
+      return { ...res, displayTitle, resourceLink };
+    })
+  );
 
   return (
     <main className="min-h-screen pt-32 pb-20 px-4">
@@ -72,18 +107,18 @@ export default async function RoadmapPage({ params }) {
         {/* 🚀 TIMELINE SECTION */}
         <div className="relative max-w-2xl mx-auto mt-12">
           {/* Vertical Line Container */}
-          {plan.resources.length > 0 && (
+          {enrichedResources.length > 0 && (
             <div className="absolute left-4 md:left-1/2 top-0 bottom-0 w-0.5 bg-gradient-to-b from-cyan-500 via-purple-500/50 to-transparent" />
           )}
 
           <div className="space-y-12 relative z-10">
-            {plan.resources.length === 0 ? (
+            {enrichedResources.length === 0 ? (
               <div className="text-center bg-white/[0.02] border border-dashed border-white/10 rounded-[32px] py-16">
                 <Layers size={48} className="mx-auto mb-4 text-white/10" />
                 <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">No resources linked yet.</p>
               </div>
             ) : (
-              plan.resources.map((res, index) => (
+              enrichedResources.map((res, index) => (
                 <div key={index} className="relative flex items-start md:items-center">
                   
                   {/* Timeline Node (The dot on the line) */}
@@ -97,11 +132,13 @@ export default async function RoadmapPage({ params }) {
                         Step {index + 1}: {res.resourceType}
                       </span>
                       
-                      <h3 className="text-lg font-bold text-white mb-5 group-hover:text-cyan-300 transition-colors">
-                        Study Material
+                      {/* 🚀 FIXED: Shows the real title now! */}
+                      <h3 className="text-lg font-bold text-white mb-5 group-hover:text-cyan-300 transition-colors line-clamp-2">
+                        {res.displayTitle}
                       </h3>
                       
-                      <Link href={res.resourceType === 'Note' ? `/notes/${res.resourceId}` : `/blogs/${res.resourceId}`}>
+                      {/* 🚀 FIXED: Uses the enriched correct link! */}
+                      <Link href={res.resourceLink}>
                         <button className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest bg-white text-black px-5 py-2.5 rounded-full hover:scale-105 transition-transform active:scale-95 shadow-lg shadow-white/10">
                           Open Resource <BookOpen size={14} />
                         </button>
