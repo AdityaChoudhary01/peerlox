@@ -4,6 +4,7 @@ import Blog from "@/lib/models/Blog";
 import Note from "@/lib/models/Note";
 import User from "@/lib/models/User";
 import Collection from "@/lib/models/Collection"; 
+import StudyEvent from "@/lib/models/StudyEvent"; // 🚀 ADDED: For Public Roadmaps
 
 const BASE_URL = 'https://www.stuhive.in';
 
@@ -19,13 +20,14 @@ export async function GET() {
   try {
     await connectDB();
 
-    // 🚀 Fetch all models and aggregations in parallel for maximum speed
+    // 🚀 Fetch all models in parallel for maximum speed
     const blogsPromise = Blog.find({}).select("slug updatedAt").lean();
     const notesPromise = Note.find({}).select("_id updatedAt").lean();
     const usersPromise = User.find({}).select("_id updatedAt").lean();
     const collectionsPromise = Collection.find({ visibility: 'public' }).select("slug updatedAt").lean();
+    const roadmapsPromise = StudyEvent.find({ isPublic: true }).select("slug updatedAt").lean(); // 🚀 ADDED
     
-    // 🚀 ADDED: Get all unique universities and their latest update time directly from Notes
+    // Get all unique universities and their latest update time directly from Notes
     const universitiesPromise = Note.aggregate([
       { $match: { university: { $ne: null, $ne: "" } } },
       { $group: { 
@@ -34,34 +36,27 @@ export async function GET() {
       }}
     ]);
 
-    const [blogs, notes, users, collections, universities] = await Promise.all([
+    const [blogs, notes, users, collections, universities, roadmaps] = await Promise.all([
       blogsPromise,
       notesPromise,
       usersPromise,
       collectionsPromise,
-      universitiesPromise 
+      universitiesPromise,
+      roadmapsPromise
     ]);
 
-    // DEBUG: See what is actually being returned
-    console.log(`[SITEMAP] Found ${blogs.length} blogs, ${notes.length} notes, ${users.length} users, ${collections.length} collections, ${universities.length} universities.`);
-    
-    if (blogs.length === 0) {
-      console.warn("[SITEMAP] WARNING: No blogs found in the database. Are they published?");
-    }
-
-    // 🚀 STATIC ROUTES (Added /hive-points here)
+    // 🚀 STATIC ROUTES
     const staticRoutes = [
       "", "/about", "/contact", "/blogs", "/search", "/shared-collections", "/requests",
-      "/login","/signup", 
+      "/login","/signup", "/roadmaps", // 🚀 ADDED: Main roadmaps hub
       "/donate", "/supporters", "/terms", "/privacy", "/dmca", "/hive-points"
     ].map(route => ({
       url: `${BASE_URL}${route}`,
       lastModified: new Date().toISOString(),
-      priority: route === "" ? "1.0" : route === "/requests" ? "0.9" : "0.5", // Boosted priority for requests board
-      changefreq: route === "/requests" ? "daily" : "monthly", // Requests board changes frequently
+      priority: route === "" ? "1.0" : route === "/requests" || route === "/roadmaps" ? "0.9" : "0.5",
+      changefreq: route === "/requests" || route === "/roadmaps" ? "daily" : "monthly",
     }));
 
-    // Filter out any blogs that somehow don't have a slug to prevent malformed URLs
     const blogPages = blogs
       .filter(blog => blog.slug) 
       .map(blog => ({
@@ -85,9 +80,8 @@ export async function GET() {
       changefreq: "weekly",
     }));
 
-    // 🚀 DYNAMICALLY GENERATE COLLECTION PAGES
     const collectionPages = collections
-      .filter(col => col.slug) // Prevent undefined slugs
+      .filter(col => col.slug) 
       .map(col => ({
         url: `${BASE_URL}/shared-collections/${col.slug}`,
         lastModified: formatDate(col.updatedAt),
@@ -95,19 +89,37 @@ export async function GET() {
         changefreq: "weekly",
       }));
 
-    // 🚀 NEW: DYNAMICALLY GENERATE UNIVERSITY HUB PAGES
+    // 🚀 DYNAMIC ROADMAP PAGES
+    const roadmapPages = roadmaps
+      .filter(rm => rm.slug)
+      .map(rm => ({
+        url: `${BASE_URL}/roadmaps/${rm.slug}`,
+        lastModified: formatDate(rm.updatedAt),
+        priority: "0.8",
+        changefreq: "weekly",
+      }));
+
+    // DYNAMIC UNIVERSITY HUB PAGES
     const universityPages = universities.map(univ => {
       const slug = univ._id.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
       return {
         url: `${BASE_URL}/univ/${slug}`,
-        lastModified: formatDate(univ.updatedAt), // Uses the time of the most recently uploaded note for this univ!
-        priority: "0.9", // High priority because these are major landing pages
+        lastModified: formatDate(univ.updatedAt),
+        priority: "0.9",
         changefreq: "daily",
       };
     });
 
     // 🚀 MERGE EVERYTHING TOGETHER
-    const allPages = [...staticRoutes, ...universityPages, ...blogPages, ...notePages, ...profilePages, ...collectionPages];
+    const allPages = [
+      ...staticRoutes, 
+      ...universityPages, 
+      ...blogPages, 
+      ...notePages, 
+      ...profilePages, 
+      ...collectionPages,
+      ...roadmapPages // 🚀 ADDED
+    ];
 
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -121,12 +133,10 @@ ${allPages
   .join("")}
 </urlset>`;
 
-    // 🚀 THE CACHE FIX: To test changes immediately, temporarily remove the Cache-Control header
-    // so Cloudflare doesn't serve you a stale version. Put it back once it's working.
     return new Response(sitemap, {
       headers: {
         "Content-Type": "application/xml",
-        // "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=43200", 
+        "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=43200", 
       },
     });
   } catch (error) {
