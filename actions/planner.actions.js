@@ -2,6 +2,8 @@
 
 import connectDB from "@/lib/db";
 import StudyEvent from "@/lib/models/StudyEvent";
+import Note from "@/lib/models/Note";   // 🚀 ADDED: Needed to lookup Note Slugs
+import Blog from "@/lib/models/Blog";   // 🚀 ADDED: Needed to lookup Blog Slugs
 import { revalidatePath } from "next/cache";
 
 // 1. Create a new Exam/Study Goal
@@ -45,6 +47,33 @@ export async function addResourceToPlan(userId, eventId, resourceData) {
   }
 }
 
+// 🚀 Helper Function: Hydrate resources with their SEO slugs
+async function hydratePlanResources(plan) {
+  if (!plan.resources || plan.resources.length === 0) return plan;
+
+  const enrichedResources = await Promise.all(plan.resources.map(async (res) => {
+    let slug = null;
+    try {
+      if (res.resourceType === 'Note') {
+        const note = await Note.findById(res.resourceId).select('slug').lean();
+        if (note) slug = note.slug;
+      } else if (res.resourceType === 'Blog') {
+        const blog = await Blog.findById(res.resourceId).select('slug').lean();
+        if (blog) slug = blog.slug;
+      }
+    } catch (e) {
+      console.error(`Failed to fetch slug for resource ${res.resourceId}`);
+    }
+    
+    return {
+      ...res,
+      resourceSlug: slug || null // 🚀 INJECTED!
+    };
+  }));
+
+  return { ...plan, resources: enrichedResources };
+}
+
 // 3. Get User's Active Plans (with countdown logic)
 export async function getUserStudyPlans(userId) {
   await connectDB();
@@ -52,13 +81,15 @@ export async function getUserStudyPlans(userId) {
     const plans = await StudyEvent.find({ user: userId, isCompleted: false })
       .sort({ examDate: 1 })
       .lean();
-    return { success: true, plans: JSON.parse(JSON.stringify(plans)) };
+      
+    // 🚀 Hydrate all plans with slugs before returning to client!
+    const hydratedPlans = await Promise.all(plans.map(p => hydratePlanResources(p)));
+      
+    return { success: true, plans: JSON.parse(JSON.stringify(hydratedPlans)) };
   } catch (error) {
     return { success: false, plans: [] };
   }
 }
-
-// Add these to actions/planner.actions.js
 
 export async function getStudyPlanBySlug(slug) {
   await connectDB();
@@ -66,7 +97,13 @@ export async function getStudyPlanBySlug(slug) {
     const plan = await StudyEvent.findOne({ slug, isPublic: true })
       .populate("user", "name avatar")
       .lean();
-    return { success: true, plan: JSON.parse(JSON.stringify(plan)) };
+      
+    if (!plan) return { success: false, plan: null };
+
+    // 🚀 Hydrate the plan with slugs!
+    const hydratedPlan = await hydratePlanResources(plan);
+
+    return { success: true, plan: JSON.parse(JSON.stringify(hydratedPlan)) };
   } catch (error) {
     return { success: false, plan: null };
   }
@@ -98,9 +135,6 @@ export async function cloneStudyPlan(userId, originalPlanId) {
     return { success: false, error: error.message };
   }
 }
-
-// Add this import at the top if not present
-// import crypto from 'crypto';
 
 // 4. Toggle Plan Visibility (Publish / Unpublish)
 export async function togglePlanVisibility(userId, planId, makePublic) {
@@ -142,7 +176,10 @@ export async function getPublicStudyPlans(searchQuery = "") {
       .sort({ clones: -1, createdAt: -1 }) // Sort by most cloned, then newest
       .lean();
 
-    return { success: true, plans: JSON.parse(JSON.stringify(plans)) };
+    // 🚀 Hydrate all plans with slugs before returning
+    const hydratedPlans = await Promise.all(plans.map(p => hydratePlanResources(p)));
+
+    return { success: true, plans: JSON.parse(JSON.stringify(hydratedPlans)) };
   } catch (error) {
     return { success: false, plans: [] };
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toggleNoteFeatured, adminDeleteNote, getAllNotes } from "@/actions/admin.actions"; // 🚀 Imported getAllNotes
+import { toggleNoteFeatured, adminDeleteNote, getAllNotes } from "@/actions/admin.actions"; 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input"; 
@@ -189,7 +189,8 @@ export default function NoteModerationTable({ initialNotes }) {
                       <Star className={`w-4 h-4 ${note.isFeatured ? "fill-current" : ""}`} />
                     </Button>
                     
-                    <Link href={`/notes/${note._id}`} target="_blank" title="View Public Note">
+                    {/* 🚀 FIXED: Now uses SEO Slug! */}
+                    <Link href={`/notes/${note.slug || note._id}`} target="_blank" title="View Public Note">
                       <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-white/30 hover:text-white hover:bg-white/5 transition-all">
                           <ExternalLink className="w-4 h-4" />
                       </Button>

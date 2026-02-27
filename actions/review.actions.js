@@ -48,9 +48,10 @@ export async function addReview({ noteId, rating, comment, userId, parentReviewI
 
     await note.save();
     
-    // 4. 🚀 TRIGGER NOTIFICATIONS
+    // 4. 🚀 TRIGGER NOTIFICATIONS (Now using the SEO Slug)
     const noteOwnerId = note.user.toString();
     const actionUserId = userId.toString();
+    const notificationLink = `/notes/${note.slug || noteId}#reviews`; // 🚀 Uses Slug for routing!
 
     if (parentReviewId) {
       // Find the original comment the user is replying to
@@ -66,11 +67,11 @@ export async function addReview({ noteId, rating, comment, userId, parentReviewI
             actorId: userId,
             type: 'SYSTEM',
             message: `Someone replied to your comment on "${note.title}".`,
-            link: `/notes/${noteId}#reviews` 
+            link: notificationLink 
           });
         }
 
-        // B. 🚀 NEW: Notify the Note Owner about activity on their post
+        // B. Notify the Note Owner about activity on their post
         // Only notify if the owner isn't the one replying AND the owner isn't the parent commenter (prevents duplicate notifs)
         if (noteOwnerId !== actionUserId && noteOwnerId !== parentCommenterId) {
           await createNotification({
@@ -78,7 +79,7 @@ export async function addReview({ noteId, rating, comment, userId, parentReviewI
             actorId: userId,
             type: 'SYSTEM',
             message: `New discussion on your note "${note.title}".`,
-            link: `/notes/${noteId}#reviews`
+            link: notificationLink
           });
         }
       }
@@ -90,13 +91,13 @@ export async function addReview({ noteId, rating, comment, userId, parentReviewI
           actorId: userId,
           type: 'SYSTEM',
           message: `Someone just left a ${rating}-star review on your note "${note.title}".`,
-          link: `/notes/${noteId}#reviews`
+          link: notificationLink
         });
       }
     }
 
-    // 5. Clear the cache for this specific note page
-    revalidatePath(`/notes/${noteId}`);
+    // 5. 🚀 Clear the cache for this specific note page using the SLUG
+    revalidatePath(`/notes/${note.slug || noteId}`);
 
     // 6. Fetch and serialize the new reviews so the frontend can update instantly without a refresh
     const updatedNote = await Note.findById(noteId).populate("reviews.user", "name avatar").lean();

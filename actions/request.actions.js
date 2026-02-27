@@ -5,6 +5,8 @@ import Request from "@/lib/models/Request";
 import Note from "@/lib/models/Note";
 import { revalidatePath } from "next/cache";
 import { createNotification } from "@/actions/notification.actions";
+import mongoose from "mongoose";
+
 /**
  * 1. CREATE A REQUEST
  */
@@ -40,7 +42,7 @@ export async function getRequests({ page = 1, limit = 12, filter = "all" } = {})
       .skip(skip)
       .limit(limit)
       .populate("requester", "name avatar")
-      .populate("fulfillmentNote", "title slug") // If fulfilled, get note details
+      .populate("fulfillmentNote", "title slug") // 🚀 Already perfectly pulling the slug!
       .lean();
 
     const total = await Request.countDocuments(query);
@@ -58,21 +60,28 @@ export async function getRequests({ page = 1, limit = 12, filter = "all" } = {})
 
 /**
  * 3. FULFILL A REQUEST
- * Links an existing Note ID to the Request and notifies the requester
+ * Links an existing Note (by ID or Slug) to the Request and notifies the requester
  */
 export async function fulfillRequest(requestId, noteUrlOrId, userId) {
   await connectDB();
   try {
-    // Extract ID from URL if user pastes a link like "stuhive.in/notes/65a..."
-    let noteId = noteUrlOrId;
+    // 🚀 Extract identifier from URL if user pastes a link like "stuhive.in/notes/data-structures-123"
+    let identifier = noteUrlOrId.trim();
     if (noteUrlOrId.includes("/notes/")) {
         const parts = noteUrlOrId.split("/notes/");
-        noteId = parts[1].split("?")[0]; // Handle query params if any
+        // Get whatever comes after /notes/, remove query params (?), and remove trailing slashes
+        identifier = parts[1].split("?")[0].replace(/\/$/, ""); 
+    }
+
+    // 🚀 Smart Search: Check if the identifier is a valid MongoDB ID or a Slug
+    let query = { slug: identifier };
+    if (mongoose.Types.ObjectId.isValid(identifier)) {
+        query = { $or: [{ _id: identifier }, { slug: identifier }] };
     }
 
     // 1. Verify Note Exists
-    const note = await Note.findById(noteId);
-    if (!note) return { success: false, error: "Note not found. Check the ID or Link." };
+    const note = await Note.findOne(query);
+    if (!note) return { success: false, error: "Note not found. Check the link and try again." };
 
     // 2. Update Request
     const request = await Request.findByIdAndUpdate(
@@ -80,7 +89,7 @@ export async function fulfillRequest(requestId, noteUrlOrId, userId) {
       {
         status: "fulfilled",
         fulfilledBy: userId,
-        fulfillmentNote: note._id,
+        fulfillmentNote: note._id, // Keep the actual reference ID for the database
       },
       { new: true }
     );
@@ -93,7 +102,7 @@ export async function fulfillRequest(requestId, noteUrlOrId, userId) {
         actorId: userId,
         type: 'REQUEST_FULFILLED',
         message: `Good news! Your community request "${request.title}" has been fulfilled!`,
-        link: `/notes/${note._id}` // Clicking the notification takes them straight to the note
+        link: `/notes/${note.slug || note._id}` // 🚀 Clicking the notification uses the new SEO slug
       });
     }
 
@@ -101,6 +110,6 @@ export async function fulfillRequest(requestId, noteUrlOrId, userId) {
     return { success: true };
   } catch (error) {
     console.error("Fulfill Request Error:", error);
-    return { success: false, error: "Invalid Note ID or URL" };
+    return { success: false, error: "An error occurred while linking the note." };
   }
 }

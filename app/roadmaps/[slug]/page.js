@@ -38,7 +38,7 @@ export default async function RoadmapPage({ params }) {
 
   await connectDB();
 
-  // 🚀 FIX: ENRICH RESOURCES WITH REAL TITLES AND BLOG SLUGS
+  // 🚀 FIX: ENRICH RESOURCES WITH REAL TITLES AND SEO SLUGS
   const enrichedResources = await Promise.all(
     plan.resources.map(async (res) => {
       let displayTitle = "Unknown Resource";
@@ -46,16 +46,18 @@ export default async function RoadmapPage({ params }) {
 
       try {
         if (res.resourceType === 'Note') {
-          const note = await Note.findById(res.resourceId).select('title').lean();
+          // 🚀 FIXED: Now pulling the 'slug' field from the Note model
+          const note = await Note.findById(res.resourceId).select('title slug').lean();
           if (note) {
             displayTitle = note.title;
-            resourceLink = `/notes/${res.resourceId}`;
+            // 🚀 FIXED: Links now use the SEO slug, falling back to ID if slug doesn't exist
+            resourceLink = `/notes/${note.slug || res.resourceId}`;
           }
         } else if (res.resourceType === 'Blog') {
           const blog = await Blog.findById(res.resourceId).select('title slug').lean();
           if (blog) {
             displayTitle = blog.title;
-            resourceLink = `/blogs/${blog.slug}`; // 🚀 FIXED: Now uses the actual slug!
+            resourceLink = `/blogs/${blog.slug}`; 
           }
         }
       } catch (error) {
@@ -132,12 +134,10 @@ export default async function RoadmapPage({ params }) {
                         Step {index + 1}: {res.resourceType}
                       </span>
                       
-                      {/* 🚀 FIXED: Shows the real title now! */}
                       <h3 className="text-lg font-bold text-white mb-5 group-hover:text-cyan-300 transition-colors line-clamp-2">
                         {res.displayTitle}
                       </h3>
                       
-                      {/* 🚀 FIXED: Uses the enriched correct link! */}
                       <Link href={res.resourceLink}>
                         <button className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest bg-white text-black px-5 py-2.5 rounded-full hover:scale-105 transition-transform active:scale-95 shadow-lg shadow-white/10">
                           Open Resource <BookOpen size={14} />

@@ -10,11 +10,11 @@ import { authOptions } from "@/lib/auth";
 import { deleteFileFromR2 } from "@/lib/r2"; 
 import { generateReadUrl } from "@/lib/r2";
 import { indexNewContent, removeContentFromIndex } from "@/lib/googleIndexing";
-import { pingIndexNow } from "@/lib/indexnow"; // 🚀 ADDED: IndexNow Integration
+import { pingIndexNow } from "@/lib/indexnow"; 
 import { awardHivePoints } from "@/actions/leaderboard.actions";
 import { trackCreatorEvent } from "@/actions/analytics.actions";
 import { createNotification } from "@/actions/notification.actions";
-const APP_URL = process.env.NEXTAUTH_URL || "https://www.stuhive.in"; // 🚀 ADDED: Base URL for IndexNow
+const APP_URL = process.env.NEXTAUTH_URL || "https://www.stuhive.in"; 
 
 /**
  * FETCH NOTES (Pagination + Search + Filtering)
@@ -62,7 +62,7 @@ export async function getNotes({ page = 1, limit = 12, search, university, cours
 
     // Execution
     const notes = await Note.find(query)
-      .select("-reviews") // 🚀 MASSIVE SPEED BOOST: Do not fetch heavy review arrays for lists!
+      .select("-reviews") 
       .populate('user', 'name avatar role email')
       .sort(sortOptions)
       .skip(skip)
@@ -83,7 +83,7 @@ export async function getNotes({ page = 1, limit = 12, search, university, cours
       uploadDate: note.uploadDate ? note.uploadDate.toISOString() : new Date().toISOString(),
       createdAt: note.createdAt ? note.createdAt.toISOString() : new Date().toISOString(),
       updatedAt: note.updatedAt ? note.updatedAt.toISOString() : new Date().toISOString(),
-      reviews: [] // Force empty array since we explicitly excluded them for speed
+      reviews: [] 
     }));
 
     return { notes: safeNotes, totalPages, currentPage: page, totalCount: totalNotes };
@@ -95,7 +95,44 @@ export async function getNotes({ page = 1, limit = 12, search, university, cours
 }
 
 /**
- * GET SINGLE NOTE
+ * 🚀 GET SINGLE NOTE BY SLUG (New SEO Function)
+ */
+export async function getNoteBySlug(slug) {
+  await connectDB();
+  try {
+    const note = await Note.findOne({ slug })
+      .populate('user', 'name avatar role email')
+      .populate({
+        path: 'reviews.user',
+        select: 'name avatar role email'
+      })
+      .lean(); 
+
+    if (!note) return null;
+
+    return {
+      ...note,
+      _id: note._id.toString(),
+      user: note.user ? { ...note.user, _id: note.user._id.toString() } : null,
+      reviews: note.reviews ? note.reviews.map(r => ({
+        ...r,
+        _id: r._id.toString(),
+        user: r.user ? { ...r.user, _id: r.user._id.toString() } : null,
+        parentReviewId: r.parentReviewId ? r.parentReviewId.toString() : null,
+        createdAt: r.createdAt ? r.createdAt.toISOString() : new Date().toISOString()
+      })) : [],
+      uploadDate: note.uploadDate ? note.uploadDate.toISOString() : new Date().toISOString(),
+      createdAt: note.createdAt ? note.createdAt.toISOString() : new Date().toISOString(),
+      updatedAt: note.updatedAt ? note.updatedAt.toISOString() : new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error(`Error fetching note by slug ${slug}:`, error);
+    return null;
+  }
+}
+
+/**
+ * GET SINGLE NOTE BY ID (Legacy / Internal Fallback)
  */
 export async function getNoteById(id) {
   await connectDB();
@@ -106,7 +143,7 @@ export async function getNoteById(id) {
         path: 'reviews.user',
         select: 'name avatar role email'
       })
-      .lean(); // 🚀 LEAN: Prevents 5-second Mongoose serialization block
+      .lean(); 
 
     if (!note) return null;
 
@@ -137,49 +174,40 @@ export async function getNoteById(id) {
 export async function getRelatedNotes(noteId) {
   await connectDB();
   try {
-    // 1. Fetch all necessary comparison fields from the current note
     const currentNote = await Note.findById(noteId).select('subject course user title').lean();
     if (!currentNote) return [];
 
-    // 2. Build a "Similar Title" Regex 
-    // Splits the title into words, ignores small words (the, and, for), and escapes them safely for Regex.
     const titleWords = currentNote.title
       ? currentNote.title
           .split(/\s+/)
           .filter(word => word.length > 3) 
-          .map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) // Prevent regex injection
+          .map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) 
       : [];
 
     const titleRegexCondition = titleWords.length > 0 
       ? { title: { $regex: new RegExp(titleWords.join('|'), 'i') } } 
       : null;
 
-    // 3. Construct the Smart OR conditions
     const orConditions = [
-      { user: currentNote.user },       // Match 1: Same Author
-      { subject: currentNote.subject }, // Match 2: Same Subject
-      { course: currentNote.course }    // Match 3: Same Course
+      { user: currentNote.user },       
+      { subject: currentNote.subject }, 
+      { course: currentNote.course }    
     ];
 
-    // Add the title match condition if we successfully extracted keywords
     if (titleRegexCondition) {
-      orConditions.push(titleRegexCondition); // Match 4: Similar Title Keywords
+      orConditions.push(titleRegexCondition); 
     }
 
-    // 4. Fetch the best matching notes
     const relatedNotes = await Note.find({
-      _id: { $ne: noteId }, // Exclude the current note itself
+      _id: { $ne: noteId }, 
       $or: orConditions
     })
-    // 🚀 SELECT: Explicitly pulls only what's needed for the NoteCard
-    .select('title university course subject year rating numReviews downloadCount uploadDate fileType fileName isFeatured fileKey thumbnailKey')
+    .select('title slug university course subject year rating numReviews downloadCount uploadDate fileType fileName isFeatured fileKey thumbnailKey') // 🚀 Added slug selection
     .populate('user', 'name avatar role')
     .limit(4)
-    // 🚀 Sort by best performing notes first among the matches
     .sort({ rating: -1, downloadCount: -1 })
     .lean();
 
-    // 5. Serialize safely for the Client Component
     return relatedNotes.map(n => ({
       ...n,
       _id: n._id.toString(),
@@ -216,28 +244,26 @@ export async function createNote({ title, description, university, course, subje
 
     await newNote.save();
     
-    // Increment User Note Count
     await User.findByIdAndUpdate(userId, { $inc: { noteCount: 1 } });
-
-    // 🏆 GAMIFICATION: Reward the author 10 points for uploading study material!
     await awardHivePoints(userId, 10);
 
-    // ✅ SEO: Ping Google
-    const seoStatus = await indexNewContent(newNote._id.toString(), 'note');
+    const seoStatus = await indexNewContent(newNote.slug || newNote._id.toString(), 'note');
     
-    // 🔥 INSTANT INDEXNOW PING
-    await pingIndexNow([`${APP_URL}/notes/${newNote._id.toString()}`]);
+    // 🚀 Ping IndexNow with the new SLUG instead of the ID
+    const urlToPing = newNote.slug ? `${APP_URL}/notes/${newNote.slug}` : `${APP_URL}/notes/${newNote._id.toString()}`;
+    await pingIndexNow([urlToPing]);
 
     console.warn("\n=============================================");
     console.warn(`🚀 SEO STATUS: Google Indexing Ping was ${seoStatus ? 'DELIVERED' : 'FAILED'}`);
     console.warn(`🏆 GAMIFICATION: Awarded 10 Hive Points to User ID ${userId}`);
-    console.warn(`📝 NOTE ID: ${newNote._id.toString()}`);
+    console.warn(`📝 NOTE URL: ${urlToPing}`);
     console.warn("=============================================\n");
     
     revalidatePath('/'); 
     revalidatePath('/search');
     
-    return { success: true, noteId: newNote._id.toString() };
+    // 🚀 Return the slug so the client can redirect to the SEO friendly URL
+    return { success: true, noteSlug: newNote.slug, noteId: newNote._id.toString() };
   } catch (error) {
     console.error("Create Note Error:", error);
     return { success: false, error: error.message };
@@ -256,12 +282,11 @@ export async function updateNote(noteId, data, userId) {
     const session = await getServerSession(authOptions);
     const isAdmin = session?.user?.role === "admin";
     
-    // Authorization Check
     if (note.user.toString() !== userId && !isAdmin) {
       return { success: false, error: "Unauthorized" };
     }
 
-    // Update fields
+    // 🚀 If title changes, the slug will regenerate (handled in pre-save hook)
     note.title = data.title || note.title;
     note.description = data.description || note.description;
     note.university = data.university || note.university;
@@ -271,18 +296,17 @@ export async function updateNote(noteId, data, userId) {
 
     await note.save();
 
-    // ✅ SEO: Await Google confirmation
-    const seoStatus = await indexNewContent(noteId, 'note');
+    const urlToPing = note.slug ? `${APP_URL}/notes/${note.slug}` : `${APP_URL}/notes/${noteId}`;
+    const seoStatus = await indexNewContent(note.slug || noteId, 'note');
     console.log(`[ACTION LOG] Note updated. Google Indexing ping: ${seoStatus ? 'DELIVERED' : 'FAILED'}`);
 
     // 🔥 INSTANT INDEXNOW PING
-    await pingIndexNow([`${APP_URL}/notes/${noteId}`]);
+    await pingIndexNow([urlToPing]);
 
-    revalidatePath(`/notes/${noteId}`);
+    revalidatePath(`/notes/${note.slug || noteId}`);
     revalidatePath('/profile');
     revalidatePath('/search');
     
-    // Convert to strict plain object before returning to Client Component
     return { success: true, note: JSON.parse(JSON.stringify(note.toObject())) };
   } catch (error) {
     return { success: false, error: error.message };
@@ -302,12 +326,10 @@ export async function deleteNote(noteId, userId) {
     const session = await getServerSession(authOptions);
     const isAdmin = session?.user?.role === "admin";
 
-    // Authorization Check: User must own the note OR be an admin
     if (note.user.toString() !== userId && !isAdmin) {
       return { success: false, error: "Unauthorized" };
     }
 
-    // R2 CLEANUP: Delete the actual files from Cloudflare before wiping DB
     if (note.fileKey) {
         await deleteFileFromR2(note.fileKey);
     }
@@ -315,7 +337,6 @@ export async function deleteNote(noteId, userId) {
         await deleteFileFromR2(note.thumbnailKey);
     }
 
-    // Delete from Database and cleanup references
     await Promise.all([
       Note.findByIdAndDelete(noteId),
       User.findByIdAndUpdate(note.user, { $inc: { noteCount: -1 } }),
@@ -323,12 +344,12 @@ export async function deleteNote(noteId, userId) {
       Collection.updateMany({ notes: noteId }, { $pull: { notes: noteId } })
     ]);
 
-    // ✅ SEO: Await Google removal confirmation
-    const seoStatus = await removeContentFromIndex(noteId, 'note');
+    const urlToRemove = note.slug ? `${APP_URL}/notes/${note.slug}` : `${APP_URL}/notes/${noteId}`;
+    const seoStatus = await removeContentFromIndex(note.slug || noteId, 'note');
     console.log(`[ACTION LOG] Note deleted. Google Removal ping: ${seoStatus ? 'DELIVERED' : 'FAILED'}`);
 
-    // 🔥 INSTANT INDEXNOW PING (Tells them the URL is gone)
-    await pingIndexNow([`${APP_URL}/notes/${noteId}`]);
+    // 🔥 INSTANT INDEXNOW PING
+    await pingIndexNow([urlToRemove]);
 
     revalidatePath('/');
     revalidatePath('/search');
@@ -347,19 +368,14 @@ export async function deleteNote(noteId, userId) {
 export async function incrementDownloadCount(noteId) {
   await connectDB();
   try {
-    // 1. Increment the download count and return the updated document
     const note = await Note.findByIdAndUpdate(
       noteId, 
       { $inc: { downloadCount: 1 } },
       { new: true } 
     );
 
-    // 2. 🏆 GAMIFICATION & 📈 ANALYTICS
     if (note && note.user) {
-      // Awards 2 Hive Points per download. You can change this number!
       await awardHivePoints(note.user, 2);
-      
-      // Log this download on the creator's analytics graph!
       await trackCreatorEvent(note.user, 'downloads');
     }
 
@@ -376,16 +392,13 @@ export async function incrementDownloadCount(noteId) {
 export async function incrementViewCount(noteId) {
   await connectDB();
   try {
-    // 1. Increment the view count and return the updated document
     const note = await Note.findByIdAndUpdate(
       noteId, 
       { $inc: { viewCount: 1 } },
-      { new: true } // 🚀 FIXED: Added { new: true } so we can get the note's author ID!
+      { new: true } 
     );
 
-    // 2. 📈 ANALYTICS
     if (note && note.user) {
-      // Log this view on the creator's analytics graph!
       await trackCreatorEvent(note.user, 'views');
     }
 
@@ -405,7 +418,6 @@ export async function addReview(noteId, userId, rating, comment, parentReviewId 
     const note = await Note.findById(noteId);
     if (!note) return { success: false, error: "Note not found" };
 
-    // 1. Prevent duplicate reviews (ONLY check for main reviews, allow multiple replies)
     if (!parentReviewId) {
         const alreadyReviewed = note.reviews.find(
           (r) => r.user.toString() === userId.toString() && !r.parentReviewId
@@ -425,7 +437,6 @@ export async function addReview(noteId, userId, rating, comment, parentReviewId 
 
     note.reviews.push(review);
     
-    // Recalculate stats
     const ratedReviews = note.reviews.filter(r => r.rating > 0);
     if (ratedReviews.length > 0) {
       note.rating = ratedReviews.reduce((acc, item) => item.rating + acc, 0) / ratedReviews.length;
@@ -436,56 +447,49 @@ export async function addReview(noteId, userId, rating, comment, parentReviewId 
     
     await note.save();
 
-    // ==========================================
-    // 🚀 TRIGGER NOTIFICATIONS
-    // ==========================================
     const noteOwnerId = note.user.toString();
     const actionUserId = userId.toString();
+    const notificationLink = `/notes/${note.slug || noteId}#reviews`; // 🚀 Using slug for notification link
 
     if (parentReviewId) {
-      // Find the original comment the user is replying to
       const parentReview = note.reviews.find(r => r._id.toString() === parentReviewId.toString());
       
       if (parentReview) {
         const parentCommenterId = parentReview.user.toString();
 
-        // A. Notify the original commenter (if they aren't replying to themselves)
         if (parentCommenterId !== actionUserId) {
           await createNotification({
             recipientId: parentCommenterId,
             actorId: userId,
             type: 'SYSTEM',
             message: `Someone replied to your comment on "${note.title}".`,
-            link: `/notes/${noteId}#reviews` 
+            link: notificationLink
           });
         }
 
-        // B. Notify the Note Owner about activity on their post
         if (noteOwnerId !== actionUserId && noteOwnerId !== parentCommenterId) {
           await createNotification({
             recipientId: noteOwnerId,
             actorId: userId,
             type: 'SYSTEM',
             message: `New discussion on your note "${note.title}".`,
-            link: `/notes/${noteId}#reviews`
+            link: notificationLink
           });
         }
       }
     } else {
-      // It's a BRAND NEW review -> Notify the note owner
       if (noteOwnerId !== actionUserId) {
         await createNotification({
           recipientId: noteOwnerId,
           actorId: userId,
           type: 'SYSTEM',
           message: `Someone just left a ${rating}-star review on your note "${note.title}".`,
-          link: `/notes/${noteId}#reviews`
+          link: notificationLink
         });
       }
     }
 
-    // TRIGGER REVALIDATION
-    revalidatePath(`/notes/${noteId}`);
+    revalidatePath(`/notes/${note.slug || noteId}`);
 
     const updatedNote = await Note.findById(noteId).populate("reviews.user", "name avatar").lean();
     
@@ -502,6 +506,7 @@ export async function addReview(noteId, userId, rating, comment, parentReviewId 
     return { success: false, error: error.message };
   }
 }
+
 /**
  * GET USER NOTES
  */
@@ -510,7 +515,7 @@ export async function getUserNotes(userId, page = 1, limit = 10) {
   try {
     const skip = (page - 1) * limit;
     const notes = await Note.find({ user: userId })
-      .select("-reviews") // 🚀 SPEED BOOST: Do not fetch reviews for profile lists
+      .select("-reviews") 
       .sort({ uploadDate: -1 })
       .skip(skip)
       .limit(limit)
@@ -525,7 +530,7 @@ export async function getUserNotes(userId, page = 1, limit = 10) {
       uploadDate: n.uploadDate ? n.uploadDate.toISOString() : new Date().toISOString(),
       createdAt: n.createdAt ? n.createdAt.toISOString() : new Date().toISOString(),
       updatedAt: n.updatedAt ? n.updatedAt.toISOString() : new Date().toISOString(),
-      reviews: [] // Excluded for speed
+      reviews: [] 
     }));
 
     return {
@@ -552,7 +557,6 @@ export async function deleteReview(noteId, reviewId) {
       (r) => r._id.toString() !== reviewId && r.parentReviewId?.toString() !== reviewId
     );
 
-    // Recalculate stats
     const ratedReviews = note.reviews.filter((r) => r.rating > 0);
     note.numReviews = note.reviews.filter(r => !r.parentReviewId).length;
     note.rating = ratedReviews.length > 0 
@@ -565,7 +569,6 @@ export async function deleteReview(noteId, reviewId) {
       .populate("reviews.user", "name avatar")
       .lean();
 
-    // SERIALIZE BEFORE RETURNING
     const safeReviews = updatedNote.reviews.map(r => ({
       ...r,
       _id: r._id.toString(),

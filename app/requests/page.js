@@ -8,9 +8,7 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.stuhive.in";
 
 // 🚀 ULTRA HYPER SEO METADATA MATRIX
 export const metadata = {
-  title: {
-    absolute: "Request Study Notes & PDFs | Community Wishlist | StuHive",
-  },
+  title: "Request Study Notes & PDFs | Community Wishlist | StuHive",
   description: "Can't find the specific university notes or PDF you need? Post a request on the StuHive Community Wishlist and let top students help you ace your exams.",
   keywords: [
     "request study notes", "community wishlist", "ask for study materials", 
@@ -83,15 +81,15 @@ export default async function RequestsPage({ searchParams }) {
       "author": {
         "@type": "Person",
         "name": req.requester?.name || "StuHive Student",
-        // 🚀 FIXED: Added URL field to resolve GSC 'Missing field "url"' warning
         "url": req.requester?._id ? `${APP_URL}/profile/${req.requester._id}` : APP_URL
       },
       "answerCount": req.status === 'fulfilled' ? 1 : 0,
+      // 🚀 FIXED: Now uses the SEO slug if it exists, otherwise falls back to ID
       ...(req.status === 'fulfilled' && req.fulfillmentNote && {
         "acceptedAnswer": {
           "@type": "Answer",
           "text": `This request was fulfilled with the study material: ${req.fulfillmentNote.title || 'Note Document'}.`,
-          "url": `${APP_URL}/notes/${req.fulfillmentNote._id}`,
+          "url": `${APP_URL}/notes/${req.fulfillmentNote.slug || req.fulfillmentNote._id}`, 
           "dateCreated": req.updatedAt || new Date().toISOString(),
           "author": {
             "@type": "Organization",

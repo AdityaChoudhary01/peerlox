@@ -120,7 +120,7 @@ export default async function PublicCollectionDetails({ params }) {
       "itemListElement": collection.notes?.map((note, index) => ({
         "@type": "ListItem",
         "position": index + 1,
-        "url": `${APP_URL}/notes/${note._id}`,
+        "url": `${APP_URL}/notes/${note.slug || note._id}`, // 🚀 FIXED: Uses Slug
         "name": note.title
       }))
     }
@@ -142,7 +142,8 @@ export default async function PublicCollectionDetails({ params }) {
         <ul>
           {collection.notes?.map(note => (
             <li key={`seo-${note._id}`}>
-              <a href={`${APP_URL}/notes/${note._id}`}>{note.title}</a>
+              {/* 🚀 FIXED: Uses Slug */}
+              <a href={`${APP_URL}/notes/${note.slug || note._id}`}>{note.title}</a>
             </li>
           ))}
         </ul>
@@ -230,8 +231,8 @@ export default async function PublicCollectionDetails({ params }) {
                   itemType="https://schema.org/ListItem"
                 >
                   <meta itemProp="position" content={index + 1} />
-                  {/* ✅ FIXED: Removed mutually exclusive 'item' property to satisfy GSC */}
-                  <meta itemProp="url" content={`${APP_URL}/notes/${note._id}`} />
+                  {/* 🚀 FIXED: Uses Slug */}
+                  <meta itemProp="url" content={`${APP_URL}/notes/${note.slug || note._id}`} />
                   <meta itemProp="name" content={note.title} />
                   <div className="h-full">
                     <NoteCard note={note} priority={index < 3} />
@@ -246,7 +247,6 @@ export default async function PublicCollectionDetails({ params }) {
               </div>
               <h3 className="text-lg font-bold text-gray-200 tracking-tight">Empty Archive</h3>
               <p className="text-sm text-gray-400 max-w-xs text-center mt-2 leading-relaxed">
-                {/* ✅ FIXED ESLINT WARNING: Escaped the single quote in hasn't */}
                 The curator hasn&apos;t added any study materials to this bundle yet. Check back soon.
               </p>
             </div>

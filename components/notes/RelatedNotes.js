@@ -36,11 +36,11 @@ export default function RelatedNotes({ notes }) {
             "@type": "ListItem",
             "position": index + 1,
             "item": {
-                // ✅ FIX: Multiple types ensure Google reads the Star Rating safely
                 "@type": ["LearningResource", "Course", "CreativeWork"], 
                 "description": note.description || `Academic notes and study material for ${note.course}.`,
                 "name": note.title,
-                "url": `${APP_URL}/notes/${note._id}`,
+                // 🚀 FIXED: Inject SEO Slug into the structured data URL
+                "url": `${APP_URL}/notes/${note.slug || note._id}`,
                 "image": thumbnailUrl || undefined,
                 "educationalLevel": "University",
                 "learningResourceType": "Study Guide",
@@ -48,7 +48,6 @@ export default function RelatedNotes({ notes }) {
                     "@type": "Organization",
                     "name": note.university || "Aktu"
                 },
-                // Only include rating if it exists to avoid null errors
                 ...(note.rating > 0 && {
                     "aggregateRating": {
                         "@type": "AggregateRating",
@@ -82,8 +81,9 @@ export default function RelatedNotes({ notes }) {
         
         return (
           <div key={note._id}>
+            {/* 🚀 FIXED: Link now uses the SEO Slug */}
             <Link 
-              href={`/notes/${note._id}`} 
+              href={`/notes/${note.slug || note._id}`} 
               className="group block outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 rounded-2xl"
             >
               <article 

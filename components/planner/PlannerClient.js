@@ -125,7 +125,6 @@ export default function PlannerClient({ initialPlans, userId }) {
             {/* Publish / Share Controls */}
             <div className="absolute top-4 right-4 flex gap-2">
               
-              {/* 🚀 UPDATED SHARE BUTTON */}
               <Button 
                 variant="secondary" 
                 size="icon" 
@@ -178,29 +177,38 @@ export default function PlannerClient({ initialPlans, userId }) {
               {plan.resources.length === 0 ? (
                 <p className="text-xs text-gray-600 italic py-4">No resources linked yet.</p>
               ) : (
-                plan.resources.map((res, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors group/res">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-black text-gray-400 group-hover/res:text-cyan-400 transition-colors">
-                        <BookOpen size={14} />
+                plan.resources.map((res, i) => {
+                  // 🚀 FIXED: Fallback to res.resourceSlug if we passed it down, else use ID.
+                  // Since StudyEvent stores generic resources, we have to assume the backend action
+                  // (getUserStudyPlans) populated the slug onto the resource object if it could.
+                  const linkTarget = res.resourceType === 'Note' 
+                    ? `/notes/${res.resourceSlug || res.resourceId}` 
+                    : `/blogs/${res.resourceSlug || res.resourceId}`;
+
+                  return (
+                    <div key={i} className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors group/res">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-black text-gray-400 group-hover/res:text-cyan-400 transition-colors">
+                          <BookOpen size={14} />
+                        </div>
+                        <span className="text-xs font-bold text-gray-300">View {res.resourceType}</span>
                       </div>
-                      <span className="text-xs font-bold text-gray-300">View {res.resourceType}</span>
+                      
+                      <div className="flex items-center gap-2">
+                        <Link href={linkTarget}>
+                            <ExternalLink size={14} className="text-gray-600 hover:text-white transition-colors" />
+                        </Link>
+                        <button 
+                          onClick={() => handleRemoveResource(plan._id, res.resourceId)}
+                          className="text-gray-600 hover:text-red-500 p-1.5 rounded-lg hover:bg-white/5 transition-colors opacity-0 group-hover/res:opacity-100"
+                          title="Remove from plan"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <Link href={res.resourceType === 'Note' ? `/notes/${res.resourceId}` : `/blogs/${res.resourceId}`}>
-                          <ExternalLink size={14} className="text-gray-600 hover:text-white transition-colors" />
-                      </Link>
-                      <button 
-                        onClick={() => handleRemoveResource(plan._id, res.resourceId)}
-                        className="text-gray-600 hover:text-red-500 p-1.5 rounded-lg hover:bg-white/5 transition-colors opacity-0 group-hover/res:opacity-100"
-                        title="Remove from plan"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>

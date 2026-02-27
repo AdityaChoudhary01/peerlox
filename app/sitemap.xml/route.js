@@ -22,7 +22,8 @@ export async function GET() {
 
     // 🚀 Fetch all models in parallel for maximum speed
     const blogsPromise = Blog.find({}).select("slug updatedAt").lean();
-    const notesPromise = Note.find({}).select("_id updatedAt").lean();
+    // 🚀 FIXED: Fetch slug instead of just _id
+    const notesPromise = Note.find({}).select("slug _id updatedAt").lean(); 
     const usersPromise = User.find({}).select("_id updatedAt").lean();
     const collectionsPromise = Collection.find({ visibility: 'public' }).select("slug updatedAt").lean();
     const roadmapsPromise = StudyEvent.find({ isPublic: true }).select("slug updatedAt").lean(); // 🚀 ADDED
@@ -66,8 +67,9 @@ export async function GET() {
         changefreq: "weekly",
       }));
 
+    // 🚀 FIXED: Use the new SEO slug for the sitemap URLs
     const notePages = notes.map(note => ({
-      url: `${BASE_URL}/notes/${note._id.toString()}`,
+      url: `${BASE_URL}/notes/${note.slug || note._id.toString()}`,
       lastModified: formatDate(note.updatedAt),
       priority: "0.9",
       changefreq: "daily",

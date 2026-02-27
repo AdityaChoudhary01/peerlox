@@ -59,6 +59,7 @@ export default async function SearchPage({ searchParams }) {
   const year = params.year || "";
   const sort = params.sort || "newest";
 
+  // 🚀 Fetch notes (now includes the slug in the backend action)
   const { notes, totalPages, totalCount } = await getNotes({
     page,
     limit: 12,
@@ -138,6 +139,7 @@ export default async function SearchPage({ searchParams }) {
                 <div className="grid grid-cols-2 xl:grid-cols-3 gap-2.5 sm:gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700 justify-items-center">
                   {notes.map((note, index) => (
                     <article key={note._id} className="w-full h-full">
+                        {/* 🚀 NoteCard now receives the note with the slug attached! */}
                         <NoteCard note={note} priority={index < 4} />
                     </article>
                   ))}

@@ -294,7 +294,8 @@ function RequestCard({ req, currentUser, onFulfill, index }) {
                              </DialogContent>
                          </Dialog>
                      ) : (
-                         <Link href={`/notes/${req.fulfillmentNote?._id || '#'}`} title="View fulfilling document" className="shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-green-500 rounded-md w-full sm:w-auto">
+                         // 🚀 FIXED: Now uses the SEO Slug from the populated fulfillmentNote!
+                         <Link href={`/notes/${req.fulfillmentNote?.slug || req.fulfillmentNote?._id || '#'}`} title="View fulfilling document" className="shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-green-500 rounded-md w-full sm:w-auto">
                              <Button size="sm" variant="secondary" className="h-7 sm:h-8 w-full sm:w-auto px-2 sm:px-3 text-[8px] sm:text-[10px] font-black uppercase tracking-widest bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20">
                                  View Note <LinkIcon size={10} className="ml-1 sm:ml-1.5" aria-hidden="true" />
                              </Button>

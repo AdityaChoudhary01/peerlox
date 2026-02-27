@@ -169,7 +169,8 @@ export default function NoteCard({ note, priority = false }) {
             </Badge>
           </div>
 
-          <Link href={`/notes/${note._id}`} tabIndex={-1} aria-hidden="true" className="block w-full h-full relative z-10">
+          {/* 🚀 FIXED: Links now point to the SEO slug instead of _id */}
+          <Link href={`/notes/${note.slug || note._id}`} tabIndex={-1} aria-hidden="true" className="block w-full h-full relative z-10">
             {thumbnailUrl ? (
               <Image
                 src={thumbnailUrl}
@@ -198,7 +199,8 @@ export default function NoteCard({ note, priority = false }) {
         {/* --- BOTTOM SECTION (TEXT) --- */}
         <div className="flex flex-col flex-grow p-5 sm:p-6 pt-5 relative z-10 bg-[#050505]">
           <div className="flex-grow space-y-3 block mb-6">
-            <Link href={`/notes/${note._id}`} title={`Download notes for ${note.course}`} className="outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60 rounded-lg block">
+            {/* 🚀 FIXED: Title Link points to SEO Slug */}
+            <Link href={`/notes/${note.slug || note._id}`} title={`Download notes for ${note.course}`} className="outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60 rounded-lg block">
               <h3
                 className="font-extrabold text-lg sm:text-xl tracking-tight leading-tight line-clamp-2 text-white/95
                   group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-cyan-300 group-hover:to-blue-500

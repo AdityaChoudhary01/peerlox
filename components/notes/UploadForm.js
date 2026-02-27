@@ -105,16 +105,14 @@ export default function UploadForm() {
       if (res.success) {
         setUploadStatus("Redirecting...");
         toast({ title: "Success!" });
-        router.push(`/notes/${res.noteId}`);
-        // ✅ FIX 2: Notice there is no "setLoading(false)" here. 
-        // We keep the button permanently locked while the page transitions so they can't click it again!
+        // 🚀 FIXED: Redirect using the new SEO Slug instead of the DB ID!
+        router.push(`/notes/${res.noteSlug || res.noteId}`);
       } else {
         throw new Error(res.error);
       }
 
     } catch (err) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
-      // Only unlock the button if there was a failure
       setLoading(false);
     }
   };

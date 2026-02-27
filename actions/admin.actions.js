@@ -50,11 +50,11 @@ export async function getAdminDashboardData() {
       // 2. Global Blog Stats
       Blog.aggregate([{ $group: { _id: null, totalViews: { $sum: "$viewCount" } } }]),
 
-      // 3. Top Growing Notes (Views)
-      Note.find().sort({ viewCount: -1 }).limit(5).select('title viewCount user').populate('user', 'name').lean(),
+      // 3. Top Growing Notes (Views) - 🚀 ADDED slug
+      Note.find().sort({ viewCount: -1 }).limit(5).select('title slug viewCount user').populate('user', 'name').lean(),
 
-      // 4. Top Downloaded Notes
-      Note.find().sort({ downloadCount: -1 }).limit(5).select('title downloadCount user').populate('user', 'name').lean(),
+      // 4. Top Downloaded Notes - 🚀 ADDED slug
+      Note.find().sort({ downloadCount: -1 }).limit(5).select('title slug downloadCount user').populate('user', 'name').lean(),
 
       // 5. Top Growing Blogs
       Blog.find().sort({ viewCount: -1 }).limit(5).select('title viewCount author').populate('author', 'name').lean(),
@@ -289,13 +289,13 @@ export async function toggleNoteFeatured(noteId, currentState) {
     { new: true }
   );
 
-  // 🚀 TRIGGER NOTIFICATION IF THE NOTE WAS JUST FEATURED
+  // 🚀 TRIGGER NOTIFICATION IF THE NOTE WAS JUST FEATURED (Now using slug)
   if (newState && updatedNote?.user) {
     await createNotification({
       recipientId: updatedNote.user,
       type: 'FEATURED',
       message: `Congratulations! Your note "${updatedNote.title}" was featured by an Admin.`,
-      link: `/notes/${updatedNote._id}`
+      link: `/notes/${updatedNote.slug || updatedNote._id}` // 🚀 Fallback to _id just in case
     });
   }
 
@@ -311,7 +311,7 @@ export async function adminUpdateNote(noteId, updateData) {
   try {
     const updatedNote = await Note.findByIdAndUpdate(noteId, updateData, { new: true }).lean();
     revalidatePath("/admin");
-    revalidatePath(`/notes/${noteId}`);
+    revalidatePath(`/notes/${updatedNote.slug || noteId}`); // 🚀 Revalidate using slug
     revalidatePath("/search");
     
     return { success: true, note: JSON.parse(JSON.stringify(updatedNote)) };

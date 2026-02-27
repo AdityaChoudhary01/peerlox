@@ -40,10 +40,10 @@ export async function GET(request) {
       `${APP_URL}/register`,
     ];
 
-    // 🚀 Parallel Fetching (Added University Aggregation)
+    // 🚀 Parallel Fetching (Now fetching SLUG for notes)
     const [blogs, notes, users, collections, roadmaps, universities] = await Promise.all([
       Blog.find({}).select('slug').lean(),
-      Note.find({}).select('_id').lean(),
+      Note.find({}).select('slug').lean(), // 🚀 Fetching slug instead of _id
       User.find({}).select('_id').lean(),
       Collection.find({ visibility: 'public' }).select('slug').lean(),
       StudyEvent.find({ isPublic: true }).select('slug').lean(),
@@ -56,8 +56,10 @@ export async function GET(request) {
         if (b.slug) urls.push(`${APP_URL}/blogs/${b.slug}`);
     });
 
-    // 3. Add Dynamic Notes
-    notes.forEach(n => urls.push(`${APP_URL}/notes/${n._id.toString()}`));
+    // 3. 🚀 Add Dynamic Notes (Using Slug)
+    notes.forEach(n => {
+        if (n.slug) urls.push(`${APP_URL}/notes/${n.slug}`);
+    });
 
     // 4. Add Dynamic Public Profiles
     users.forEach(u => urls.push(`${APP_URL}/profile/${u._id.toString()}`));
@@ -95,7 +97,7 @@ export async function GET(request) {
     if (response.ok || response.status === 202) {
       return NextResponse.json({ 
         success: true, 
-        message: `Hyper-SEO Boost! Submitted ${urls.length} URLs including Universities.`,
+        message: `Hyper-SEO Boost! Submitted ${urls.length} URLs including Universities and Slug Notes.`,
         urlsSubmitted: urls.length
       });
     } else {
